@@ -10,7 +10,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>2.7.18</version>
+        <version>3.1.9</version>
     </parent>
 
     <modules>
@@ -31,6 +31,8 @@
         <freemarker.version>2.3.32</freemarker.version>
         <spring-data-commons.version>2.5.4</spring-data-commons.version>
         <springdoc-openapi-ui.version>1.6.14</springdoc-openapi-ui.version>
+        <mockito.version>4.11.0</mockito.version>
+        <jakarta.servlet-api.version>6.0.0</jakarta.servlet-api.version>
         <tiny-engine.version>1.0-SNAPSHOT</tiny-engine.version>
     </properties>
     <dependencies>
@@ -109,6 +111,13 @@
         </dependency>
 
         <dependency>
+            <groupId>jakarta.servlet</groupId>
+            <artifactId>jakarta.servlet-api</artifactId>
+            <version>${jakarta.servlet-api.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
             <scope>runtime</scope>
@@ -122,6 +131,7 @@
             <groupId>org.mockito</groupId>
             <artifactId>mockito-inline</artifactId>
             <scope>test</scope>
+            <version>${mockito.version}</version>
         </dependency>
         <dependency>
             <groupId>org.junit.vintage</groupId>
@@ -157,7 +167,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.8.1</version> <!-- 选择合适的版本 -->
+                <version>3.11.0</version> <!-- 选择合适的版本 -->
                 <configuration>
                     <source>17</source>   <!-- 编译源码的 Java 版本 -->
                     <target>17</target>   <!-- 生成字节码的 Java 版本 -->
