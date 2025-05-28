@@ -379,7 +379,7 @@ public class PageServiceImpl implements PageService {
         pageHistory.setPage(pageTemp.getId());
         pageHistory.setId(null);
         pageHistory.setIsPublished(false);
-        pageHistory.setVersion("draft");
+        pageHistory.setVersion("0");
         int resultPageHistory = pageHistoryService.createPageHistory(pageHistory);
         if (resultPageHistory < 1) {
             return Result.failed(ExceptionEnum.CM001);
