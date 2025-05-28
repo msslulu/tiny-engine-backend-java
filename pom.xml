@@ -31,8 +31,8 @@
         <freemarker.version>2.3.32</freemarker.version>
         <spring-data-commons.version>2.5.4</spring-data-commons.version>
         <springdoc-openapi-ui.version>1.6.14</springdoc-openapi-ui.version>
-        <mockito.version>4.11.0</mockito.version>
-        <jakarta.servlet-api.version>6.0.0</jakarta.servlet-api.version>
+        <mockito-inline.version>4.11.0</mockito-inline.version>
+        <jakarta.servlet-api.version>6.1.0</jakarta.servlet-api.version>
         <tiny-engine.version>1.0-SNAPSHOT</tiny-engine.version>
     </properties>
     <dependencies>
@@ -131,7 +131,7 @@
             <groupId>org.mockito</groupId>
             <artifactId>mockito-inline</artifactId>
             <scope>test</scope>
-            <version>${mockito.version}</version>
+            <version>${mockito-inline.version}</version>
         </dependency>
         <dependency>
             <groupId>org.junit.vintage</groupId>
