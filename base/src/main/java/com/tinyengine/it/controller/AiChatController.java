@@ -68,17 +68,17 @@ public class AiChatController {
      * @return ai回答信息 result
      */
     @Operation(summary = "获取ai回答信息", description = "获取ai回答信息",
-            parameters = {
-                    @Parameter(name = "ChatRequest", description = "入参对象")
-            }, responses = {
-            @ApiResponse(responseCode = "200", description = "返回信息",
-                    content = @Content(mediaType = "application/json", schema = @Schema())),
-            @ApiResponse(responseCode = "400", description = "请求失败")
+        parameters = {
+            @Parameter(name = "ChatRequest", description = "入参对象")
+        }, responses = {
+        @ApiResponse(responseCode = "200", description = "返回信息",
+            content = @Content(mediaType = "application/json", schema = @Schema())),
+        @ApiResponse(responseCode = "400", description = "请求失败")
     })
     @SystemControllerLog(description = "AI chat")
     @PostMapping("/ai/chat")
     public ResponseEntity<?> aiChat(@RequestBody ChatRequest request,
-                                    @RequestHeader(value = "Authorization", required = false) String authorization) throws Exception {
+        @RequestHeader(value = "Authorization", required = false) String authorization) throws Exception {
 
         if (authorization != null && authorization.startsWith("Bearer ")) {
             String token = authorization.replace("Bearer ", "");
@@ -89,10 +89,10 @@ public class AiChatController {
 
         if (request.isStream()) {
             return ResponseEntity.ok()
-                    .contentType(MediaType.TEXT_EVENT_STREAM)
-                    .header("Cache-Control", "no-cache")
-                    .header("X-Accel-Buffering", "no") // 禁用Nginx缓冲
-                    .body((StreamingResponseBody) response);
+                .contentType(MediaType.TEXT_EVENT_STREAM)
+                .header("Cache-Control", "no-cache")
+                .header("X-Accel-Buffering", "no") // 禁用Nginx缓冲
+                .body((StreamingResponseBody) response);
         } else {
             return ResponseEntity.ok(response);
         }
@@ -107,17 +107,17 @@ public class AiChatController {
      * @return ai回答信息 result
      */
     @Operation(summary = "获取ai回答信息", description = "获取ai回答信息",
-            parameters = {
-                    @Parameter(name = "ChatRequest", description = "入参对象")
-            }, responses = {
-            @ApiResponse(responseCode = "200", description = "返回信息",
-                    content = @Content(mediaType = "application/json", schema = @Schema())),
-            @ApiResponse(responseCode = "400", description = "请求失败")
+        parameters = {
+            @Parameter(name = "ChatRequest", description = "入参对象")
+        }, responses = {
+        @ApiResponse(responseCode = "200", description = "返回信息",
+            content = @Content(mediaType = "application/json", schema = @Schema())),
+        @ApiResponse(responseCode = "400", description = "请求失败")
     })
     @SystemControllerLog(description = "AI completions")
     @PostMapping("/chat/completions")
     public ResponseEntity<?> completions(@RequestBody ChatRequest request,
-                                         @RequestHeader(value = "Authorization", required = false) String authorization) throws Exception {
+        @RequestHeader(value = "Authorization", required = false) String authorization) throws Exception {
         if (authorization != null && authorization.startsWith("Bearer ")) {
             String token = authorization.replace("Bearer ", "");
             request.setApiKey(token);
@@ -127,10 +127,10 @@ public class AiChatController {
 
         if (request.isStream()) {
             return ResponseEntity.ok()
-                    .contentType(MediaType.TEXT_EVENT_STREAM)
-                    .header("Cache-Control", "no-cache")
-                    .header("X-Accel-Buffering", "no") // 禁用Nginx缓冲
-                    .body((StreamingResponseBody) response);
+                .contentType(MediaType.TEXT_EVENT_STREAM)
+                .header("Cache-Control", "no-cache")
+                .header("X-Accel-Buffering", "no") // 禁用Nginx缓冲
+                .body((StreamingResponseBody) response);
         } else {
             return ResponseEntity.ok(response);
         }
@@ -142,12 +142,12 @@ public class AiChatController {
      * @return ai回答信息 result
      */
     @Operation(summary = "获取加密key信息", description = "获取加密key信息",
-            parameters = {
-                    @Parameter(name = "request", description = "入参对象")
-            }, responses = {
-            @ApiResponse(responseCode = "200", description = "返回信息",
-                    content = @Content(mediaType = "application/json", schema = @Schema())),
-            @ApiResponse(responseCode = "400", description = "请求失败")
+        parameters = {
+            @Parameter(name = "request", description = "入参对象")
+        }, responses = {
+        @ApiResponse(responseCode = "200", description = "返回信息",
+            content = @Content(mediaType = "application/json", schema = @Schema())),
+        @ApiResponse(responseCode = "400", description = "请求失败")
     })
     @SystemControllerLog(description = "get token")
     @PostMapping("/encrypt-key")
@@ -167,12 +167,12 @@ public class AiChatController {
      * @return result
      */
     @Operation(summary = "在指定集合中搜索", description = "在指定集合中搜索",
-            parameters = {
-                    @Parameter(name = "searchDto", description = "搜索请求参数体"),
-            }, responses = {
-            @ApiResponse(responseCode = "200", description = "返回信息",
-                    content = @Content(mediaType = "application/json", schema = @Schema())),
-            @ApiResponse(responseCode = "400", description = "请求失败")
+        parameters = {
+            @Parameter(name = "searchDto", description = "搜索请求参数体"),
+        }, responses = {
+        @ApiResponse(responseCode = "200", description = "返回信息",
+            content = @Content(mediaType = "application/json", schema = @Schema())),
+        @ApiResponse(responseCode = "400", description = "请求失败")
     })
     @SystemControllerLog(description = "AI search in collection")
     @PostMapping("/ai/search")
