@@ -1,12 +1,13 @@
 /**
  * Copyright (c) 2023 - present TinyEngine Authors.
  * Copyright (c) 2023 - present Huawei Cloud Computing Technologies Co., Ltd.
- * <p>
+ *
  * Use of this source code is governed by an MIT-style license.
- * <p>
+ *
  * THE OPEN SOURCE SOFTWARE IN THIS PRODUCT IS DISTRIBUTED IN THE HOPE THAT IT WILL BE USEFUL,
  * BUT WITHOUT ANY WARRANTY, WITHOUT EVEN THE IMPLIED WARRANTY OF MERCHANTABILITY OR FITNESS FOR
  * A PARTICULAR PURPOSE. SEE THE APPLICABLE LICENSES FOR MORE DETAILS.
+ *
  */
 
 package com.tinyengine.it.controller;
@@ -56,9 +57,7 @@ public class AiChatController {
      */
     @Autowired
     private AiChatV1Service aiChatV1Service;
-    /**
-     *  vector storage service
-     */
+
     @Autowired
     private StorageService vectorStorageService;
 
@@ -100,26 +99,6 @@ public class AiChatController {
 
     }
 
-    /**
-     * search in collection
-     *
-     * @param searchDto the searchDto
-     * @return result
-     */
-    @Operation(summary = "在指定集合中搜索", description = "在指定集合中搜索",
-            parameters = {
-                    @Parameter(name = "searchDto", description = "搜索请求参数体"),
-            }, responses = {
-            @ApiResponse(responseCode = "200", description = "返回信息",
-                    content = @Content(mediaType = "application/json", schema = @Schema())),
-            @ApiResponse(responseCode = "400", description = "请求失败")
-    })
-    @SystemControllerLog(description = "AI search in collection")
-    @PostMapping("/ai/search")
-    public Result<List<EmbeddingMatchDto>> searchInCollection(@RequestBody SearchRequest searchDto) {
-        List<EmbeddingMatchDto> results = vectorStorageService.search(searchDto);
-        return Result.success(results);
-    }
 
     /**
      * AI api v1
@@ -156,7 +135,6 @@ public class AiChatController {
             return ResponseEntity.ok(response);
         }
     }
-
     /**
      * get token
      *
@@ -175,10 +153,31 @@ public class AiChatController {
     @PostMapping("/encrypt-key")
     public Result<AiToken> getToken(@RequestBody ChatRequest request) throws Exception {
         String apiKey = request.getApiKey();
-        if (apiKey == null || apiKey.isEmpty()) {
+        if(apiKey == null || apiKey.isEmpty()) {
             return Result.failed(ExceptionEnum.CM320);
         }
         String token = aiChatV1Service.getToken(apiKey);
         return Result.success(new AiToken(token));
+    }
+
+    /**
+     * search in collection
+     *
+     * @param searchDto the searchDto
+     * @return result
+     */
+    @Operation(summary = "在指定集合中搜索", description = "在指定集合中搜索",
+            parameters = {
+                    @Parameter(name = "searchDto", description = "搜索请求参数体"),
+            }, responses = {
+            @ApiResponse(responseCode = "200", description = "返回信息",
+                    content = @Content(mediaType = "application/json", schema = @Schema())),
+            @ApiResponse(responseCode = "400", description = "请求失败")
+    })
+    @SystemControllerLog(description = "AI search in collection")
+    @PostMapping("/ai/search")
+    public Result<List<EmbeddingMatchDto>> searchInCollection(@RequestBody SearchRequest searchDto) {
+        List<EmbeddingMatchDto> results = vectorStorageService.search(searchDto);
+        return Result.success(results);
     }
 }
