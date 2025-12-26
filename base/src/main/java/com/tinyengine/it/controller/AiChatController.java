@@ -71,9 +71,9 @@ public class AiChatController {
         parameters = {
             @Parameter(name = "ChatRequest", description = "入参对象")
         }, responses = {
-        @ApiResponse(responseCode = "200", description = "返回信息",
-            content = @Content(mediaType = "application/json", schema = @Schema())),
-        @ApiResponse(responseCode = "400", description = "请求失败")
+            @ApiResponse(responseCode = "200", description = "返回信息",
+                content = @Content(mediaType = "application/json", schema = @Schema())),
+            @ApiResponse(responseCode = "400", description = "请求失败")
     })
     @SystemControllerLog(description = "AI chat")
     @PostMapping("/ai/chat")
@@ -110,9 +110,9 @@ public class AiChatController {
         parameters = {
             @Parameter(name = "ChatRequest", description = "入参对象")
         }, responses = {
-        @ApiResponse(responseCode = "200", description = "返回信息",
-            content = @Content(mediaType = "application/json", schema = @Schema())),
-        @ApiResponse(responseCode = "400", description = "请求失败")
+            @ApiResponse(responseCode = "200", description = "返回信息",
+                content = @Content(mediaType = "application/json", schema = @Schema())),
+            @ApiResponse(responseCode = "400", description = "请求失败")
     })
     @SystemControllerLog(description = "AI completions")
     @PostMapping("/chat/completions")
@@ -145,9 +145,9 @@ public class AiChatController {
         parameters = {
             @Parameter(name = "request", description = "入参对象")
         }, responses = {
-        @ApiResponse(responseCode = "200", description = "返回信息",
-            content = @Content(mediaType = "application/json", schema = @Schema())),
-        @ApiResponse(responseCode = "400", description = "请求失败")
+            @ApiResponse(responseCode = "200", description = "返回信息",
+                content = @Content(mediaType = "application/json", schema = @Schema())),
+            @ApiResponse(responseCode = "400", description = "请求失败")
     })
     @SystemControllerLog(description = "get token")
     @PostMapping("/encrypt-key")
@@ -170,9 +170,9 @@ public class AiChatController {
         parameters = {
             @Parameter(name = "searchDto", description = "搜索请求参数体"),
         }, responses = {
-        @ApiResponse(responseCode = "200", description = "返回信息",
-            content = @Content(mediaType = "application/json", schema = @Schema())),
-        @ApiResponse(responseCode = "400", description = "请求失败")
+            @ApiResponse(responseCode = "200", description = "返回信息",
+                content = @Content(mediaType = "application/json", schema = @Schema())),
+            @ApiResponse(responseCode = "400", description = "请求失败")
     })
     @SystemControllerLog(description = "AI search in collection")
     @PostMapping("/ai/search")
