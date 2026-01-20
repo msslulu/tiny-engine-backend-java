@@ -42,7 +42,8 @@ public class LoginConfig implements WebMvcConfigurer {
                 "/platform-center/api/user/forgot-password",
                 // AI
                 "/app-center/api/ai/chat",
-                "/app-center/api/chat/completions"
+                "/app-center/api/chat/completions",
+                "/material-center/api/resource/download/*"
             );
     }
 }
