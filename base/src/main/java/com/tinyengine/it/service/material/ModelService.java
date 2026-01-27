@@ -79,4 +79,10 @@ public interface ModelService extends IService<Model>{
      * @return 拼接好的SQL语句字符串，每个表的SQL用分号分隔并换行
      */
     String getAllTable();
+
+    /**
+     * 获取所有模型名称列表
+     * @return 模型名称列表
+     */
+    List<String> getAllModelName();
 }

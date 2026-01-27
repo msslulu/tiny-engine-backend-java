@@ -29,4 +29,5 @@ public class ParametersDto {
     private String options;
     private Boolean required;
     private String description;
+    private Integer maxLength;
 }

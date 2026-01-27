@@ -20,6 +20,7 @@ import com.tinyengine.it.common.exception.ExceptionEnum;
 import com.tinyengine.it.common.exception.ServiceException;
 import com.tinyengine.it.common.log.SystemServiceLog;
 import com.tinyengine.it.common.utils.JsonUtils;
+import com.tinyengine.it.dynamic.service.DynamicModelService;
 import com.tinyengine.it.mapper.ModelMapper;
 import com.tinyengine.it.model.dto.MethodDto;
 import com.tinyengine.it.model.dto.ParametersDto;
@@ -28,18 +29,21 @@ import com.tinyengine.it.model.dto.ResponseParameter;
 import com.tinyengine.it.model.entity.Model;
 import com.tinyengine.it.service.material.ModelService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.StringJoiner;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
 @Slf4j
 public class ModelServiceImpl extends ServiceImpl<ModelMapper, Model> implements ModelService {
+
+    @Autowired
+    private DynamicModelService dynamicModelService;
     /**
      * 查询表t_model信息
      *
@@ -104,7 +108,16 @@ public class ModelServiceImpl extends ServiceImpl<ModelMapper, Model> implements
      */
     @Override
     @SystemServiceLog(description = "创建model实现方法")
+    @Transactional
     public Model createModel(Model model) {
+        // 验证模型唯一性
+        QueryWrapper<Model> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("name_cn", model.getNameCn())
+            .or()
+            .eq("name_en", model.getNameEn());
+        if (this.baseMapper.selectCount(queryWrapper) > 0) {
+            throw new ServiceException(ExceptionEnum.CM003.getResultCode(), "Model with the same name already exists");
+        }
         List<MethodDto> methodDtos = new ArrayList<>();
         methodDtos.add(getMethodDto(Enums.methodName.CREATED.getValue(), Enums.methodName.INSERTAPI.getValue(), model));
         methodDtos.add(getMethodDto(Enums.methodName.UPDATE.getValue(), Enums.methodName.UPDATEAPI.getValue(), model));
@@ -115,6 +128,11 @@ public class ModelServiceImpl extends ServiceImpl<ModelMapper, Model> implements
         if (result != 1) {
             throw new ServiceException(ExceptionEnum.CM001.getResultCode(), ExceptionEnum.CM001.getResultCode());
         }
+        // 创建动态表
+        dynamicModelService.createDynamicTable(model);
+        //初始化模型表數據
+      //  dynamicModelService.initializeDynamicTable(model, Long.valueOf(model.getCreatedBy()));
+
         return model;
     }
 
@@ -127,11 +145,18 @@ public class ModelServiceImpl extends ServiceImpl<ModelMapper, Model> implements
      */
     @Override
     @SystemServiceLog(description = "根据id删除model实现方法")
+    @Transactional
     public Model deleteModelById(Integer id) {
         Model model = this.baseMapper.selectById(id);
         int result = this.baseMapper.deleteById(id);
         if (result != 1) {
             throw new ServiceException(ExceptionEnum.CM001.getResultCode(), ExceptionEnum.CM001.getResultCode());
+        }
+        try {
+            dynamicModelService.dropDynamicTable(model);
+        } catch (Exception e) {
+            log.error("刪除动态表失败", e);
+            throw new RuntimeException("刪除动态表失败: " + e.getMessage());
         }
         return model;
     }
@@ -145,6 +170,7 @@ public class ModelServiceImpl extends ServiceImpl<ModelMapper, Model> implements
      */
     @Override
     @SystemServiceLog(description = "根据id修改model实现方法")
+    @Transactional
     public Model updateModelById(Model model) {
         List<MethodDto> methodDtos = new ArrayList<>();
         methodDtos.add(getMethodDto(Enums.methodName.CREATED.getValue(), Enums.methodName.INSERTAPI.getValue(), model));
@@ -158,6 +184,15 @@ public class ModelServiceImpl extends ServiceImpl<ModelMapper, Model> implements
         int result = this.baseMapper.updateModelById(model);
         if (result != 1) {
             throw new ServiceException(ExceptionEnum.CM001.getResultCode(), ExceptionEnum.CM001.getResultCode());
+        }
+
+
+        // 修改动态表
+        try {
+            dynamicModelService.modifyTableStructure(model);
+        } catch (Exception e) {
+            log.error("修改动态表失败", e);
+            throw new RuntimeException("修改动态表失败: " + e.getMessage());
         }
         Model modelResult = this.baseMapper.selectById(model.getId());
         return modelResult;
@@ -207,6 +242,22 @@ public class ModelServiceImpl extends ServiceImpl<ModelMapper, Model> implements
                 .forEach(sqlJoiner::add);
 
         return sqlJoiner.toString();
+    }
+
+    /**
+     * 获取所有模型名称列表
+     *
+     * @return 模型名称列表
+     */
+    @Override
+    public List<String> getAllModelName() {
+        List<Model> modelList = this.baseMapper.selectList(null);
+        if (!CollectionUtils.isEmpty(modelList)) {
+            return modelList.stream()
+                    .map(Model::getNameEn)
+                    .collect(Collectors.toList());
+        }
+        return null;
     }
 
     private String getTableByModle(Model model) {
@@ -272,6 +323,10 @@ public class ModelServiceImpl extends ServiceImpl<ModelMapper, Model> implements
         requestParameter.setProp(Enums.methodParam.ID.getValue());
         requestParameter.setType(Enums.paramType.NUMBER.getValue());
         List<RequestParameter> parameterList = new ArrayList<>();
+        RequestParameter requestNameEn = new RequestParameter();
+        requestNameEn.setProp(Enums.methodParam.NAMEEN.getValue());
+        requestNameEn.setType(Enums.paramType.STRING.getValue());
+        parameterList.add(requestNameEn);
         if (name.equals(Enums.methodName.QUERY.getValue())) {
             RequestParameter currentPage = new RequestParameter();
             currentPage.setProp(Enums.methodParam.CURRENTPAGE.getValue());
@@ -282,21 +337,24 @@ public class ModelServiceImpl extends ServiceImpl<ModelMapper, Model> implements
             RequestParameter nameCn = new RequestParameter();
             nameCn.setProp(Enums.methodParam.NAMECN.getValue());
             nameCn.setType(Enums.paramType.STRING.getValue());
-            RequestParameter requestNameEn = new RequestParameter();
-            requestNameEn.setProp(Enums.methodParam.NAMEEN.getValue());
-            requestNameEn.setType(Enums.paramType.STRING.getValue());
             parameterList.add(currentPage);
             parameterList.add(pageSize);
             parameterList.add(nameCn);
-            parameterList.add(requestNameEn);
 
         }
+        if( name.equals(Enums.methodName.UPDATE.getValue())) {
+            RequestParameter requestParameterData = new RequestParameter();
+            requestParameterData.setProp(Enums.methodParam.DATA.getValue());
+            requestParameterData.setType(Enums.paramType.OBJECT.getValue());
+            requestParameterData.setChildren(model.getParameters());
+            parameterList.add(requestParameterData);
+        }
         if (!name.equals(Enums.methodName.DELETE.getValue())) {
-            requestParameter.setProp(Enums.methodParam.PARAMS.getValue());
-            requestParameter.setType(Enums.paramType.OBJECT.getValue());
-            requestParameter.setChildren(model.getParameters());
-            parameterList.add(requestParameter);
-
+            RequestParameter requestParameterparams = new RequestParameter();
+            requestParameterparams.setProp(Enums.methodParam.PARAMS.getValue());
+            requestParameterparams.setType(Enums.paramType.OBJECT.getValue());
+            requestParameterparams.setChildren(model.getParameters());
+            parameterList.add(requestParameterparams);
             methodDto.setRequestParameters(parameterList);
             methodDto.setResponseParameters(responseParameterList);
             return methodDto;

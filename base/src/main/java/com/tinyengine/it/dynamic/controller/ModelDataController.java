@@ -1,0 +1,115 @@
+package com.tinyengine.it.dynamic.controller;
+
+import com.tinyengine.it.common.base.Result;
+import com.tinyengine.it.common.log.SystemControllerLog;
+import com.tinyengine.it.dynamic.dto.DynamicDelete;
+import com.tinyengine.it.dynamic.dto.DynamicInsert;
+import com.tinyengine.it.dynamic.dto.DynamicQuery;
+import com.tinyengine.it.dynamic.dto.DynamicUpdate;
+import com.tinyengine.it.dynamic.service.DynamicService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
+
+@Validated
+@RestController
+@RequestMapping("/model-data/api")
+@Tag(name = "模型数据")
+public class ModelDataController {
+	@Autowired
+	private DynamicService dynamicService;
+
+	/**
+	 * 模型数据查询
+	 *
+	 * @return 返回值 all
+	 */
+	@Operation(summary = "模型数据查询", description = "模型数据查询", responses = {
+		@ApiResponse(responseCode = "200", description = "返回信息",
+			content = @Content(mediaType = "application/json")),
+		@ApiResponse(responseCode = "400", description = "请求失败")
+	})
+	@SystemControllerLog(description = "模型数据查询")
+	@PostMapping("/queryApi")
+	public Result<Map<String, Object>> query(@RequestBody DynamicQuery dto) {
+
+
+        try {
+	        return Result.success(dynamicService.queryWithPage(dto));
+        } catch (Exception e) {
+			return Result.failed(e.getMessage());
+        }
+
+	}
+
+	/**
+	 * 新增模型数据
+	 *
+	 * @return 返回值 map
+	 */
+	@Operation(summary = "新增模型数据", description = "新增模型数据", responses = {
+		@ApiResponse(responseCode = "200", description = "返回信息",
+			content = @Content(mediaType = "application/json")),
+		@ApiResponse(responseCode = "400", description = "请求失败")
+	})
+	@SystemControllerLog(description = "新增模型数据")
+	@PostMapping("/insertApi")
+	public Result<Map<String, Object> > insert(@RequestBody DynamicInsert dto) {
+
+
+		try {
+			return Result.success(dynamicService.insert(dto));
+		} catch (Exception e) {
+			return Result.failed(e.getMessage());
+		}
+
+	}
+
+	/**
+	 * 更新模型数据
+	 *
+	 * @return 返回值 map
+	 */
+	@Operation(summary = "更新模型数据", description = "更新模型数据", responses = {
+		@ApiResponse(responseCode = "200", description = "返回信息",
+			content = @Content(mediaType = "application/json")),
+		@ApiResponse(responseCode = "400", description = "请求失败")
+	})
+	@SystemControllerLog(description = "更新模型数据")
+	@PostMapping("/updateApi")
+	public Result<Map<String, Object> > update(@RequestBody DynamicUpdate dto) {
+
+
+		try {
+			return Result.success(dynamicService.update(dto));
+		} catch (Exception e) {
+			return Result.failed(e.getMessage());
+		}
+
+	}
+	/**
+	 * 刪除模型数据
+	 *
+	 * @return 返回值 map
+	 */
+	@Operation(summary = "刪除模型数据", description = "刪除模型数据", responses = {
+		@ApiResponse(responseCode = "200", description = "返回信息",
+			content = @Content(mediaType = "application/json")),
+		@ApiResponse(responseCode = "400", description = "请求失败")
+	})
+	@SystemControllerLog(description = "刪除模型数据")
+	@PostMapping("/deleteApi")
+	public Result<Map<String, Object> > delete(@RequestBody DynamicDelete dto) {
+		try {
+			return Result.success(dynamicService.delete(dto));
+		} catch (Exception e) {
+			return Result.failed(e.getMessage());
+		}
+	}
+}
