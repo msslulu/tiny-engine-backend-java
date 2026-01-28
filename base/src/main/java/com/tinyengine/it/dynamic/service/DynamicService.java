@@ -1,7 +1,6 @@
 package com.tinyengine.it.dynamic.service;
 
 import com.alibaba.fastjson.JSONObject;
-import com.google.gson.JsonObject;
 import com.tinyengine.it.common.context.LoginUserContext;
 import com.tinyengine.it.dynamic.dao.ModelDataDao;
 import com.tinyengine.it.dynamic.dto.*;
@@ -29,7 +28,9 @@ public class DynamicService {
 	private static final String OPERATION_DELETE = "DELETE";
 
 	/**
-	 * 动态查询
+	 * 查询数据
+	 * @param dto
+	 * @return list
 	 */
 	public List<JSONObject> query(DynamicQuery dto) {
 		String tableName = getTableName(dto.getNameEn());
@@ -46,7 +47,10 @@ public class DynamicService {
 	}
 
 	/**
-	 * 查询总数
+	 * 统计数量
+	 * @param tableName
+	 * @param conditions
+	 * @return long
 	 */
 	public Long count(String tableName, Map<String, Object> conditions) {
 		Map<String, Object> params = new HashMap<>();
@@ -60,8 +64,12 @@ public class DynamicService {
 
 	/**
 	 * 分页查询
+	 * @param dto
+	 * @return map
 	 */
 	public Map<String, Object> queryWithPage(DynamicQuery dto) {
+		validateTableExists(dto.getNameEn());
+		validateTableAndData(dto.getNameEn(), dto.getParams());
 		List<JSONObject> list = query(dto);
 		String tableName = getTableName(dto.getNameEn());
 		Long total = count(tableName, dto.getParams());
@@ -77,11 +85,18 @@ public class DynamicService {
 	}
 
 	/**
-	 * 单条插入
+	 * 插入数据
+	 * @param dto
+	 * @return map
 	 */
 	@Transactional
 	public Map<String, Object> insert(DynamicInsert dto) {
-
+		if( dto.getNameEn() == null || dto.getNameEn().trim().isEmpty()) {
+			throw new IllegalArgumentException("插入操作必须指定模型名称");
+		}
+        if( dto.getParams() == null || dto.getParams().isEmpty()) {
+			throw new IllegalArgumentException("插入数据不能为空");
+        }
 		validateTableExists(dto.getNameEn());
 		validateTableAndData(dto.getNameEn(), dto.getParams());
 		String tableName = getTableName(dto.getNameEn());
@@ -104,9 +119,14 @@ public class DynamicService {
 
 	/**
 	 * 更新数据
+	 * @param dto
+	 * @return
 	 */
 	@Transactional
 	public Map<String, Object> update(DynamicUpdate dto) {
+		if( dto.getNameEn() == null || dto.getNameEn().trim().isEmpty()) {
+			throw new IllegalArgumentException("更新操作必须指定模型名称");
+		}
 		if (dto.getParams() == null || dto.getParams().isEmpty()) {
 			throw new IllegalArgumentException("更新操作必须指定条件");
 		}
@@ -128,8 +148,11 @@ public class DynamicService {
 	 */
 	@Transactional
 	public Map<String, Object> delete(DynamicDelete dto) {
+		if( dto.getNameEn() == null || dto.getNameEn().trim().isEmpty()) {
+			throw new IllegalArgumentException("删除操作必须指定模型名称");
+		}
 		if (dto.getId() == null ) {
-			throw new IllegalArgumentException("删除操作必须指定条件");
+			throw new IllegalArgumentException("删除操作必须指定id");
 		}
 		validateTableExists(dto.getNameEn());
 		String tableName = getTableName(dto.getNameEn());
