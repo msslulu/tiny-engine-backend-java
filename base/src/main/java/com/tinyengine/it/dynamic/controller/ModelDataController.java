@@ -7,7 +7,6 @@ import com.tinyengine.it.dynamic.dto.DynamicInsert;
 import com.tinyengine.it.dynamic.dto.DynamicQuery;
 import com.tinyengine.it.dynamic.dto.DynamicUpdate;
 import com.tinyengine.it.dynamic.service.DynamicService;
-import com.tinyengine.it.model.entity.User;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -21,7 +20,7 @@ import java.util.Map;
 
 @Validated
 @RestController
-@RequestMapping("/model-data/api")
+@RequestMapping("/platform-center/api")
 @Tag(name = "模型数据")
 public class ModelDataController {
 	@Autowired
@@ -50,30 +49,6 @@ public class ModelDataController {
 
 	}
 
-
-
-	/**
-	 * 模型数据查询
-	 *
-	 * @return 返回值 all
-	 */
-	@Operation(summary = "模型数据查询", description = "模型数据查询", responses = {
-		@ApiResponse(responseCode = "200", description = "返回信息",
-			content = @Content(mediaType = "application/json",schema = @Schema(implementation = Map.class))),
-		@ApiResponse(responseCode = "400", description = "请求失败")
-	})
-	@SystemControllerLog(description = "模型数据查询")
-	@PostMapping("/dynamic/query")
-	public Result<Map<String, Object>> queryWithPage(@RequestBody DynamicQuery dto) {
-
-
-		try {
-			return Result.success(dynamicService.queryWithPage(dto));
-		} catch (Exception e) {
-			return Result.failed(e.getMessage());
-		}
-
-	}
 	/**
 	 * 新增模型数据
 	 *
@@ -104,7 +79,7 @@ public class ModelDataController {
 	 */
 	@Operation(summary = "更新模型数据", description = "更新模型数据", responses = {
 		@ApiResponse(responseCode = "200", description = "返回信息",
-			content = @Content(mediaType = "application/json")),
+			content = @Content(mediaType = "application/json",schema = @Schema(implementation = Map.class))),
 		@ApiResponse(responseCode = "400", description = "请求失败")
 	})
 	@SystemControllerLog(description = "更新模型数据")
@@ -126,7 +101,7 @@ public class ModelDataController {
 	 */
 	@Operation(summary = "刪除模型数据", description = "刪除模型数据", responses = {
 		@ApiResponse(responseCode = "200", description = "返回信息",
-			content = @Content(mediaType = "application/json")),
+			content = @Content(mediaType = "application/json",schema = @Schema(implementation = Map.class))),
 		@ApiResponse(responseCode = "400", description = "请求失败")
 	})
 	@SystemControllerLog(description = "刪除模型数据")
