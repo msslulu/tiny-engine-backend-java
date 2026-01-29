@@ -42,7 +42,6 @@ public class ModelDataController {
 	@SystemControllerLog(description = "模型数据查询")
 	@PostMapping("/model-data/queryApi")
 	public Result<Map<String, Object>> query(@RequestBody @Valid DynamicQuery dto) {
-
 		try {
 	        return Result.success(dynamicService.queryWithPage(dto));
         } catch (Exception e) {
@@ -65,7 +64,6 @@ public class ModelDataController {
 	@SystemControllerLog(description = "新增模型数据")
 	@PostMapping("/model-data/insertApi")
 	public Result<Map<String, Object> > insert(@RequestBody @Valid DynamicInsert dto) {
-
 		try {
 			return Result.success(dynamicService.insert(dto));
 		} catch (Exception e) {
@@ -88,7 +86,6 @@ public class ModelDataController {
 	@SystemControllerLog(description = "更新模型数据")
 	@PostMapping("/model-data/updateApi")
 	public Result<Map<String, Object> > update(@RequestBody @Valid DynamicUpdate dto) {
-
 		try {
 			return Result.success(dynamicService.update(dto));
 		} catch (Exception e) {
