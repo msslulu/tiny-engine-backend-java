@@ -12,6 +12,8 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -19,6 +21,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 @Validated
+@Slf4j
 @RestController
 @RequestMapping("/platform-center/api")
 @Tag(name = "模型数据")
@@ -38,13 +41,13 @@ public class ModelDataController {
 	})
 	@SystemControllerLog(description = "模型数据查询")
 	@PostMapping("/model-data/queryApi")
-	public Result<Map<String, Object>> query(@RequestBody DynamicQuery dto) {
+	public Result<Map<String, Object>> query(@RequestBody @Valid DynamicQuery dto) {
 
-
-        try {
+		try {
 	        return Result.success(dynamicService.queryWithPage(dto));
         } catch (Exception e) {
-			return Result.failed(e.getMessage());
+			log.error("Query failed for table: {}", dto.getNameEn(), e);
+			return Result.failed("Query operation failed");
         }
 
 	}
@@ -61,13 +64,13 @@ public class ModelDataController {
 	})
 	@SystemControllerLog(description = "新增模型数据")
 	@PostMapping("/model-data/insertApi")
-	public Result<Map<String, Object> > insert(@RequestBody DynamicInsert dto) {
-
+	public Result<Map<String, Object> > insert(@RequestBody @Valid DynamicInsert dto) {
 
 		try {
 			return Result.success(dynamicService.insert(dto));
 		} catch (Exception e) {
-			return Result.failed(e.getMessage());
+			log.error("insert failed for table: {}", dto.getNameEn(), e);
+			return Result.failed("insert operation failed");
 		}
 
 	}
@@ -84,13 +87,13 @@ public class ModelDataController {
 	})
 	@SystemControllerLog(description = "更新模型数据")
 	@PostMapping("/model-data/updateApi")
-	public Result<Map<String, Object> > update(@RequestBody DynamicUpdate dto) {
-
+	public Result<Map<String, Object> > update(@RequestBody @Valid DynamicUpdate dto) {
 
 		try {
 			return Result.success(dynamicService.update(dto));
 		} catch (Exception e) {
-			return Result.failed(e.getMessage());
+			log.error("updateApi failed for table: {}", dto.getNameEn(), e);
+			return Result.failed("update operation failed");
 		}
 
 	}
@@ -106,11 +109,12 @@ public class ModelDataController {
 	})
 	@SystemControllerLog(description = "刪除模型数据")
 	@PostMapping("/model-data/deleteApi")
-	public Result<Map<String, Object> > delete(@RequestBody DynamicDelete dto) {
+	public Result<Map<String, Object> > delete(@RequestBody @Valid DynamicDelete dto) {
 		try {
 			return Result.success(dynamicService.delete(dto));
 		} catch (Exception e) {
-			return Result.failed(e.getMessage());
+			log.error("deleteApi failed for table: {}", dto.getNameEn(), e);
+			return Result.failed("delete operation failed");
 		}
 	}
 }
