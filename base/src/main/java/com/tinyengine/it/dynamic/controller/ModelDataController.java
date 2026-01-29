@@ -37,7 +37,7 @@ public class ModelDataController {
 		@ApiResponse(responseCode = "400", description = "请求失败")
 	})
 	@SystemControllerLog(description = "模型数据查询")
-	@PostMapping("/queryApi")
+	@PostMapping("/model-data/queryApi")
 	public Result<Map<String, Object>> query(@RequestBody DynamicQuery dto) {
 
 
@@ -60,7 +60,7 @@ public class ModelDataController {
 		@ApiResponse(responseCode = "400", description = "请求失败")
 	})
 	@SystemControllerLog(description = "新增模型数据")
-	@PostMapping("/insertApi")
+	@PostMapping("/model-data/insertApi")
 	public Result<Map<String, Object> > insert(@RequestBody DynamicInsert dto) {
 
 
@@ -83,7 +83,7 @@ public class ModelDataController {
 		@ApiResponse(responseCode = "400", description = "请求失败")
 	})
 	@SystemControllerLog(description = "更新模型数据")
-	@PostMapping("/updateApi")
+	@PostMapping("/model-data/updateApi")
 	public Result<Map<String, Object> > update(@RequestBody DynamicUpdate dto) {
 
 
@@ -105,7 +105,7 @@ public class ModelDataController {
 		@ApiResponse(responseCode = "400", description = "请求失败")
 	})
 	@SystemControllerLog(description = "刪除模型数据")
-	@PostMapping("/deleteApi")
+	@PostMapping("/model-data/deleteApi")
 	public Result<Map<String, Object> > delete(@RequestBody DynamicDelete dto) {
 		try {
 			return Result.success(dynamicService.delete(dto));

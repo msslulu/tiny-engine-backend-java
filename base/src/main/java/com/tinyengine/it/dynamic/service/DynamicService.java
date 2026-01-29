@@ -68,6 +68,15 @@ public class DynamicService {
 	 * @return map
 	 */
 	public Map<String, Object> queryWithPage(DynamicQuery dto) {
+		if( dto.getNameEn() == null || dto.getNameEn().trim().isEmpty()) {
+			throw new IllegalArgumentException("查询操作必须指定模型名称");
+		}
+		if( dto.getCurrentPage() == null || dto.getCurrentPage() <= 0) {
+			dto.setCurrentPage(1);
+		}
+		if( dto.getPageSize() == null || dto.getPageSize() <= 0) {
+			dto.setPageSize(10);
+		}
 		validateTableExists(dto.getNameEn());
 		validateTableAndData(dto.getNameEn(), dto.getParams());
 		List<JSONObject> list = query(dto);
@@ -129,6 +138,9 @@ public class DynamicService {
 		}
 		if (dto.getParams() == null || dto.getParams().isEmpty()) {
 			throw new IllegalArgumentException("更新操作必须指定条件");
+		}
+		if( dto.getData() == null || dto.getData().isEmpty()) {
+			throw new IllegalArgumentException("更新数据不能为空");
 		}
 		validateTableExists(dto.getNameEn());
 		validateTableAndData(dto.getNameEn(), dto.getData());
