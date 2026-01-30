@@ -43,7 +43,7 @@ public class LoginConfig implements WebMvcConfigurer {
                 // AI
                 "/app-center/api/ai/chat",
                 "/app-center/api/chat/completions",
-                // 材料下载
+                // 图片文件资源下载
                 "/material-center/api/resource/download/*"
             );
     }
