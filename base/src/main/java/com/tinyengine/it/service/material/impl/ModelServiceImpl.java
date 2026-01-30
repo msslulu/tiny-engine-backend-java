@@ -130,7 +130,6 @@ public class ModelServiceImpl extends ServiceImpl<ModelMapper, Model> implements
         }
         // 创建动态表
         dynamicModelService.createDynamicTable(model);
-
         return model;
     }
 
