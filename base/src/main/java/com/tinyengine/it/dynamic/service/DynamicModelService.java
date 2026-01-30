@@ -41,19 +41,18 @@ public class DynamicModelService {
 	 * 创建动态表
 	 */
 	@Transactional
-	public void createDynamicTable(Model modelMetadata) {
+	public void createDynamicTable(Model modelMetadata)  {
 		String tableName = getTableName(modelMetadata.getNameEn());
 		String sql = generateCreateTableSQL(tableName, modelMetadata);
 
-		log.info("创建动态表SQL: \n{}", sql);
+		log.info("createDynamicTable SQL: \n{}", sql);
 
 		try {
 			jdbcTemplate.execute(sql);
-			log.info("创建动态表成功: {}", tableName);
+			log.info("createDynamicTable ok: {}", tableName);
 
 		} catch (Exception e) {
-			log.error("创建动态表失败: {}", tableName, e);
-			throw new RuntimeException("创建动态表失败: " + e.getMessage());
+			log.error("createDynamicTable failed: {}", tableName, e);
 		}
 	}
     private String generateDropTableSQL(String tableName) {
@@ -82,7 +81,6 @@ public class DynamicModelService {
 			log.info("Successfully dropped table: {}", tableName);
 		} catch (Exception e) {
 			log.error("Failed to drop table: {}", tableName, e);
-			throw new RuntimeException("Failed to drop table: " + tableName, e);
 		}
 	}
 	/**
@@ -553,7 +551,7 @@ public class DynamicModelService {
 	 * 获取表名
 	 */
 	private String getTableName(String modelId) {
-		return "dynamic_" + modelId.toLowerCase();
+		return "dynamic_" + modelId.toLowerCase(Locale.ROOT);
 	}
 
 

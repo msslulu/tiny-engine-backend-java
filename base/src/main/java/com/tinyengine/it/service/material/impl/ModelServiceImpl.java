@@ -130,8 +130,6 @@ public class ModelServiceImpl extends ServiceImpl<ModelMapper, Model> implements
         }
         // 创建动态表
         dynamicModelService.createDynamicTable(model);
-        //初始化模型表數據
-      //  dynamicModelService.initializeDynamicTable(model, Long.valueOf(model.getCreatedBy()));
 
         return model;
     }
