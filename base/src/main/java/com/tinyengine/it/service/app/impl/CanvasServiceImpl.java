@@ -48,7 +48,7 @@ public class CanvasServiceImpl implements CanvasService {
         if(id== null){
             return Result.failed("id can not be null");
         }
-        if(isNull(state) || isNull(type)){
+        if(!isNotBlank(state) || !isNotBlank(type)){
             return Result.failed("invalid parameter");
         }
         String occupier = null;
@@ -100,7 +100,7 @@ public class CanvasServiceImpl implements CanvasService {
         canvasDto.setOccupier(occupierValue);
         return Result.success(canvasDto);
     }
-    public static boolean isNull(String str) {
+    public static boolean isNotBlank(String str) {
         return str != null && !str.trim().isEmpty();
     }
     private Boolean isCanDoIt(String occupier, User user) {
