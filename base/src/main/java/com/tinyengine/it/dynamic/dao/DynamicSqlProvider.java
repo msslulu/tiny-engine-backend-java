@@ -19,7 +19,6 @@ public class DynamicSqlProvider {
 		String orderBy = (String) params.get("orderBy");
 		String orderType = (String) params.get("orderType");
 		SQL sql = new SQL();
-        System.out.println(fields.size());
 		// 选择字段
 		if (fields != null && !fields.isEmpty()) {
 			for (String field : fields) {
