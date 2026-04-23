@@ -9,23 +9,13 @@ public class DynamicSqlProvider {
 
 	public String select(Map<String, Object> params) {
 		String tableName = (String) params.get("tableName");
-		List<String> fields = (List<String>) params.get("fields");
 		Map<String, Object> conditions = (Map<String, Object>) params.get("conditions");
 		Integer pageNum = (Integer) params.get("pageNum");
 		Integer pageSize = (Integer) params.get("pageSize");
-		String orderBy = (String) params.get("orderBy");
-		String orderType = (String) params.get("orderType");
 
 		SQL sql = new SQL();
+		sql.SELECT("*");
 
-		// 选择字段
-		if (fields != null && !fields.isEmpty()) {
-			for (String field : fields) {
-				sql.SELECT(field);
-			}
-		} else {
-			sql.SELECT("*");
-		}
 
 		sql.FROM(tableName);
 
@@ -37,10 +27,7 @@ public class DynamicSqlProvider {
 				}
 			}
 		}
-		// 排序
-		if (orderBy != null && !orderBy.isEmpty()) {
-			sql.ORDER_BY(orderBy + " " + orderType);
-		}
+
 
 		// 分页
 		if (pageNum != null && pageSize != null) {

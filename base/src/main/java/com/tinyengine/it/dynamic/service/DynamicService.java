@@ -37,12 +37,10 @@ public class DynamicService {
 		String tableName = getTableName(dto.getNameEn());
 		Map<String, Object> params = new HashMap<>();
 		params.put("tableName", tableName);
-		params.put("fields", dto.getFields());
 		params.put("conditions", dto.getParams());
 		params.put("pageNum", dto.getCurrentPage());
 		params.put("pageSize", dto.getPageSize());
-		params.put("orderBy", dto.getOrderBy());
-		params.put("orderType", dto.getOrderType());
+
 
 		return dynamicDao.select(params);
 	}
