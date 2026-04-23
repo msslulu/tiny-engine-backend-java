@@ -4,7 +4,6 @@ import com.alibaba.fastjson.JSONObject;
 import com.tinyengine.it.common.context.LoginUserContext;
 import com.tinyengine.it.dynamic.dao.ModelDataDao;
 import com.tinyengine.it.dynamic.dto.*;
-import com.tinyengine.it.dynamic.util.SQLIdentifierValidator;
 import com.tinyengine.it.model.entity.Model;
 import com.tinyengine.it.service.material.ModelService;
 import jakarta.transaction.Transactional;
@@ -210,6 +209,7 @@ public class DynamicService {
 	 * 验证表和数据
 	 */
 	private void validateTableAndData(String tableName, Map<String, Object> data) {
+
 		if (tableName == null || tableName.trim().isEmpty()) {
 			throw new IllegalArgumentException("表名不能为空");
 		}

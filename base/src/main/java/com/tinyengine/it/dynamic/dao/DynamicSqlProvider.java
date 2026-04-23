@@ -1,6 +1,5 @@
 package com.tinyengine.it.dynamic.dao;
 
-import com.tinyengine.it.dynamic.util.SQLIdentifierValidator;
 import org.apache.ibatis.jdbc.SQL;
 
 import java.util.List;
@@ -10,8 +9,6 @@ public class DynamicSqlProvider {
 
 	public String select(Map<String, Object> params) {
 		String tableName = (String) params.get("tableName");
-		SQLIdentifierValidator.isValidIdentifier(tableName);
-
 		List<String> fields = (List<String>) params.get("fields");
 		Map<String, Object> conditions = (Map<String, Object>) params.get("conditions");
 		Integer pageNum = (Integer) params.get("pageNum");
@@ -55,8 +52,6 @@ public class DynamicSqlProvider {
 
 	public String insert(Map<String, Object> params) {
 		String tableName = (String) params.get("tableName");
-		SQLIdentifierValidator.isValidIdentifier(tableName);
-
 		Map<String, Object> data = (Map<String, Object>) params.get("data");
 
 		SQL sql = new SQL();
@@ -73,9 +68,6 @@ public class DynamicSqlProvider {
 
 	public String update(Map<String, Object> params) {
 		String tableName = (String) params.get("tableName");
-		SQLIdentifierValidator.isValidIdentifier(tableName);
-
-		SQLIdentifierValidator.isValidIdentifier(tableName);
 		Map<String, Object> data = (Map<String, Object>) params.get("data");
 		Map<String, Object> conditions = (Map<String, Object>) params.get("conditions");
 
@@ -99,8 +91,6 @@ public class DynamicSqlProvider {
 
 	public String delete(Map<String, Object> params) {
 		String tableName = (String) params.get("tableName");
-		SQLIdentifierValidator.isValidIdentifier(tableName);
-
 		Map<String, Object> conditions = (Map<String, Object>) params.get("conditions");
 
 		SQL sql = new SQL();
