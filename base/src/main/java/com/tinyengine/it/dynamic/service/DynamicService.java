@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.tinyengine.it.common.context.LoginUserContext;
 import com.tinyengine.it.dynamic.dao.ModelDataDao;
 import com.tinyengine.it.dynamic.dto.*;
+import com.tinyengine.it.dynamic.util.SQLIdentifierValidator;
 import com.tinyengine.it.model.entity.Model;
 import com.tinyengine.it.service.material.ModelService;
 import jakarta.transaction.Transactional;
@@ -38,6 +39,7 @@ public class DynamicService {
 		Map<String, Object> params = new HashMap<>();
 		params.put("tableName", tableName);
 		params.put("conditions", dto.getParams());
+		params.put("fields", dto.getFields());
 		params.put("pageNum", dto.getCurrentPage());
 		params.put("pageSize", dto.getPageSize());
 
@@ -76,6 +78,10 @@ public class DynamicService {
 		if( dto.getPageSize() == null || dto.getPageSize() <= 0) {
 			dto.setPageSize(10);
 		}
+		List<String> fields = dto.getFields();
+		// 验证字段列表
+		validateFields(fields);
+		// 验证表和数据
 		validateTableExists(dto.getNameEn());
 		validateTableAndData(dto.getNameEn(), dto.getParams());
 		List<JSONObject> list = query(dto);
@@ -220,7 +226,21 @@ public class DynamicService {
 		// 验证字段名格式
 		for (String field : data.keySet()) {
 			if (!field.matches("^[a-zA-Z_][a-zA-Z0-9_]*$")) {
-				throw new IllegalArgumentException("字段名格式不正确: " + field);
+				throw new IllegalArgumentException("查询字段名格式不正确: " + field);
+			}
+		}
+	}
+
+	/**
+	 * 验证字段列表
+	 * @param fields
+	 */
+	private void validateFields(List<String> fields) {
+		if (fields != null) {
+			for (String field : fields) {
+				if (!field.matches("^[a-zA-Z_][a-zA-Z0-9_]*$")) {
+					throw new IllegalArgumentException("Field name format is invalid: " + field);
+				}
 			}
 		}
 	}
