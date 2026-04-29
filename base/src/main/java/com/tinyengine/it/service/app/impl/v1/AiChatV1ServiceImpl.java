@@ -61,6 +61,7 @@ public class AiChatV1ServiceImpl implements AiChatV1Service {
     private final OpenAIConfig openAIConfig;
     private final HttpClient httpClient;
 
+
     public AiChatV1ServiceImpl(MCPToolRegistry toolRegistry,
                                ObjectMapper objectMapper,
                                OpenAIConfig openAIConfig) {
@@ -120,7 +121,6 @@ public class AiChatV1ServiceImpl implements AiChatV1Service {
             }
 
         } else {
-           // return processNonStreamWithTools(requestBuilder, request);
 
             return processStandardResponse(requestBuilder);
         }
@@ -134,8 +134,7 @@ public class AiChatV1ServiceImpl implements AiChatV1Service {
      */
     @Override
     public String getToken(String apiKey) throws Exception {
-        //String sm4Key = System.getenv("SM4KEY");
-        String sm4Key="rOGV7EsU7thOawaUrOI+LA==";
+        String sm4Key = System.getenv("SM4KEY");
         String encrypt = SM4Utils.encryptECB(apiKey, sm4Key);
         return "EKEY_"+ encrypt;
     }
@@ -535,8 +534,7 @@ public class AiChatV1ServiceImpl implements AiChatV1Service {
     }
 
     private String getApiKey(String encryptApiKey) throws Exception {
-       // String sm4Key = System.getenv("SM4KEY");
-        String sm4Key="rOGV7EsU7thOawaUrOI+LA==";
+        String sm4Key = System.getenv("SM4KEY");
 
         if (encryptApiKey.startsWith("EKEY_")) {
             String  encryptBase64ApiKey = encryptApiKey.substring(5);

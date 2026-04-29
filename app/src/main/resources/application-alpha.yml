@@ -114,7 +114,7 @@ openai:
   default-model: deepseek-chat
   timeout-seconds: 300
   streamable-tools:
-    doc_tools: http://localhost:9090/mcp  # 工具名 -> SSE服务URL
+    doc_tools: https://agent.opentiny.design/servers/doc-tools-mcp/mcp  # 工具名 -> SSE服务URL
 
 
   streamable-http:
