@@ -8,6 +8,7 @@ import com.tinyengine.it.common.exception.ExceptionEnum;
 import com.tinyengine.it.common.utils.JsonUtils;
 import com.tinyengine.it.mapper.ComponentLibraryMapper;
 import com.tinyengine.it.mapper.ComponentMapper;
+import com.tinyengine.it.mcp.utils.UrlValidateUtil;
 import com.tinyengine.it.model.dto.*;
 import com.tinyengine.it.model.entity.Component;
 import com.tinyengine.it.model.entity.ComponentLibrary;
@@ -36,9 +37,12 @@ import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.*;
 
-
+/**
+ * GitFileReaderService
+ */
 @Service
 public class GitFileReaderService {
+
 
 	private static final Logger log = LoggerFactory.getLogger(GitFileReaderService.class);
 
@@ -48,11 +52,20 @@ public class GitFileReaderService {
 	private  ComponentLibraryMapper componentLibraryMapper;
 	@Autowired
 	private ComponentMapper baseMapper;
+	@Autowired
+	private UrlValidateUtil urlValidateUtil;
 
+	/**
+	 * Reads the content of a file from a given URL, validates its JSON structure,
+	 * and processes the data to create or update components and component libraries.
+	 *
+	 * @param url The URL of the file to be read.
+	 * @return A JSON string representing the result of the operation, or an error message if the process fails.
+	 */
 	@Tool(name="bundle_create",description = "给定的 文件URL 读取内容.")
 	public String readFileFromRepo(String url) {
 		try {
-
+			urlValidateUtil.validateFinalUrl(url);
 			log.info("准备从  URL  {} 中读取文件内容", url);
 
 			//1.从给定的  URL 读取内容
@@ -67,13 +80,12 @@ public class GitFileReaderService {
 			}
 			String fileName = Path.of(path).getFileName().toString();
 			String jsonContent = new String(fileBytes, StandardCharsets.UTF_8);
-			boolean validJson = isValidJson(jsonContent);
+			String jsonString = removeBOM(jsonContent);
+			boolean validJson = isValidJson(jsonString);
 			if(!validJson) {
-				log.error("从 URL  {} 中读取的内容不是有效的 JSON: {}", url, jsonContent);
+				log.error("从 URL  {} 中读取的内容不是有效的 JSON: {}", url, jsonString);
 				return "Error: 读取的内容不是有效的 JSON";
 			}
-
-			String jsonString = removeBOM(jsonContent);
 			Map<String, Object> jsonData =
 				JsonUtils.MAPPER.readValue(jsonString, new TypeReference<Map<String, Object>>() {
 				});
@@ -89,6 +101,9 @@ public class GitFileReaderService {
 				data = (Map<String, Object>) dataObj;
 			}
 			BundleDto bundleDto = BeanUtil.mapToBean(data, BundleDto.class, true);
+			if(bundleDto == null || bundleDto.getMaterials() == null) {
+				throw new Exception("bundle.json 解析失败，缺少 materials 字段");
+			}
 			Result<BundleResultDto> bundleResultDtoResult = parseBundle(bundleDto);
 			log.info("从 URL  {} 中读取文件 '{}' 的内容并解析完成", url, path);
 			log.info("组件列表: {}", bundleResultDtoResult.getData().getComponentList());
@@ -303,12 +318,14 @@ public class GitFileReaderService {
 	}
 
 	public Result<BundleResultDto> parseBundle(BundleDto bundleDto) {
+
 		List<Map<String, Object>> components = bundleDto.getMaterials().getComponents();
-		List<Child> snippets = bundleDto.getMaterials().getSnippets();
 
 		if (components == null || components.isEmpty()) {
 			return Result.failed(ExceptionEnum.CM009);
 		}
+		List<Child> snippets = bundleDto.getMaterials().getSnippets();
+
 		List<Component> componentList = buildComponentList(bundleDto, components, snippets);
 		List<Map<String, Object>> packages = bundleDto.getMaterials().getPackages();
 
