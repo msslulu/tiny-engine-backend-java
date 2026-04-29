@@ -105,6 +105,12 @@ public class GitFileReaderService {
 				throw new Exception("bundle.json 解析失败，缺少 materials 字段");
 			}
 			Result<BundleResultDto> bundleResultDtoResult = parseBundle(bundleDto);
+			if(!bundleResultDtoResult.isSuccess()) {
+				throw new Exception("bundle.json 解析失败: " + bundleResultDtoResult.getMessage());
+			}
+			if(bundleResultDtoResult.getData() == null || bundleResultDtoResult.getData().getComponentList() == null) {
+				throw new Exception("bundle.json 解析失败，组件列表为空");
+			}
 			log.info("从 URL  {} 中读取文件 '{}' 的内容并解析完成", url, path);
 			log.info("组件列表: {}", bundleResultDtoResult.getData().getComponentList());
 
