@@ -174,12 +174,16 @@ public class GitFileReaderService {
 		URL url = new URL(urlString);
 		HttpURLConnection connection = (HttpURLConnection) url.openConnection();
 		connection.setRequestMethod("GET");
+		connection.setInstanceFollowRedirects(false);
 		connection.setConnectTimeout(CONNECT_TIMEOUT);
 		connection.setReadTimeout(READ_TIMEOUT);
 		connection.setRequestProperty("User-Agent", "Java-URL-Client");
 
 		try {
 			int responseCode = connection.getResponseCode();
+			if (responseCode >= 300 && responseCode < 400) {
+				throw new IOException("Redirect responses are not allowed");
+			}
 			if (responseCode != HttpURLConnection.HTTP_OK) {
 				throw new IOException("HTTP response code: " + responseCode);
 			}
