@@ -38,7 +38,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 
 /**
- * GitFileReaderService
+ * and processing them to create or update components and component libraries.
  */
 @Service
 public class GitFileReaderService {
@@ -162,10 +162,11 @@ public class GitFileReaderService {
 
 
 	/**
-	 * 从给定的 Raw GitHub URL 读取内容并返回字节数组
-	 * @param urlString Raw 内容链接
-	 * @return 文件内容的字节数组
-	 * @throws IOException 网络或IO错误
+	 * Fetches the content of a file from a given URL as a byte array.
+	 *
+	 * @param urlString The URL of the file.
+	 * @return The file content as a byte array.
+	 * @throws IOException If a network or I/O error occurs.
 	 */
 	public static byte[] fetchBytes(String urlString) throws IOException {
 		log.info("开始从 Raw GitHub URL  {} 中读取内容", urlString);
@@ -196,12 +197,10 @@ public class GitFileReaderService {
 		}
 	}
 	/**
-	 * 通过浅克隆仓库到临时目录，以字节数组形式读取指定文件
+	 * Removes the Byte Order Mark (BOM) from the beginning of a string, if present.
 	 *
-	 * @param gitUrl   Git 仓库地址（如 https://github.com/opentiny/tiny-engine.git）
-	 * @param filePath 文件在仓库中的相对路径，如 "README.md"
-	 * @param branch   分支名，如 "main"
-	 * @return         文件的原始字节内容
+	 * @param gitUrl The input string.
+	 * @return The string without the BOM.
 	 */
 	public static byte[] getFileBytesViaClone(String gitUrl, String filePath, String branch)
 		throws GitAPIException, IOException, URISyntaxException {
@@ -246,7 +245,10 @@ public class GitFileReaderService {
 		}
 	}
 
-
+	/**
+	 * Recursively deletes a directory and all of its contents.
+	 * @param dir
+	 */
 	private void deleteDirectory(java.io.File dir) {
 		if (dir.isDirectory()) {
 			java.io.File[] children = dir.listFiles();
@@ -259,7 +261,12 @@ public class GitFileReaderService {
 		dir.delete();
 	}
 
-
+	/**
+	 * Removes the Byte Order Mark (BOM) from the beginning of a string, if present.
+	 *
+	 * @param input The input string.
+	 * @return The string without the BOM.
+	 */
 	public static String removeBOM(String input) {
 		if (input != null && input.startsWith("\uFEFF")) {
 			return input.substring(1);
@@ -282,6 +289,14 @@ public class GitFileReaderService {
 		}
 		return result.toString();
 	}
+	/**
+	 * Builds a list of Component objects from the given BundleDto, components, and snippets. It maps the component data from the BundleDto to Component entities, and associates any relevant snippets based on the component names.
+	 *
+	 * @param bundleDto  The BundleDto containing the framework information and materials.
+	 * @param components A list of maps representing the component data to be converted into Component entities.
+	 * @param snippets   A list of Child objects representing the snippets that may be associated with the components.
+	 * @return A list of Component objects constructed from the provided data.
+	 */
 	private List<Component> buildComponentList(BundleDto bundleDto, List<Map<String, Object>> components,
 	                                           List<Child> snippets) {
 		List<Component> componentList = new ArrayList<>();
@@ -323,6 +338,12 @@ public class GitFileReaderService {
 		return componentList;
 	}
 
+	/**
+	 * Parses the given BundleDto to extract component and package information, and constructs a BundleResultDto.
+	 *
+	 * @param bundleDto The BundleDto containing the materials to be parsed.
+	 * @return A Result object containing the BundleResultDto with the parsed components and packages, or an error if parsing fails.
+	 */
 	public Result<BundleResultDto> parseBundle(BundleDto bundleDto) {
 
 		List<Map<String, Object>> components = bundleDto.getMaterials().getComponents();
@@ -351,7 +372,12 @@ public class GitFileReaderService {
 		return Result.success(bundleList);
 	}
 
-
+    /**
+	 * Performs bulk creation or update of components based on the provided list. If a component already exists (based on certain conditions), it will be updated; otherwise, a new record will be created.
+	 *
+	 * @param componentList The list of components to be processed for creation or update.
+	 * @return A FileResult object containing the count of inserted and updated records.
+	 */
 	public FileResult bulkCreate(List<Component> componentList) {
 		int addNum = 0;
 		int updateNum = 0;
@@ -411,7 +437,12 @@ public class GitFileReaderService {
 		fileResult.setUpdateNum(updateNum);
 		return fileResult;
 	}
-
+	/**
+	 * Validates whether a given string is a valid JSON structure.
+	 *
+	 * @param json The JSON string to validate.
+	 * @return True if the string is valid JSON, false otherwise.
+	 */
 	public static boolean isValidJson(String json) {
 		ObjectMapper mapper = new ObjectMapper();
 		if (json == null || json.trim().isEmpty()) {
