@@ -19,8 +19,8 @@ public class UrlValidateUtil {
 
 
 	public void validateFinalUrl(String finalUrl) {
-		if (finalUrl == null || finalUrl.isBlank()) {
-			throw new ServiceException("400", "Invalid baseUrl: empty url");
+		if(finalUrl == null || finalUrl.isEmpty()) {
+			throw new ServiceException("400", "baseUrl cannot be null or empty");
 		}
 
 		URI uri;
@@ -44,6 +44,7 @@ public class UrlValidateUtil {
 				throw new ServiceException("500", "No AI allowed hosts configured");
 			}
 
+			enforceHttpsAndIpCheck(uri, host);
 			return;
 		}
 
@@ -55,14 +56,97 @@ public class UrlValidateUtil {
 		}
 
 		if (isLoopback) {
-			throw new ServiceException("400", "Loopback addresses are not allowed for baseUrl");
+			throw new ServiceException("400", "Loopback addresses are not allowed for custom baseUrl");
 		}
 
+		enforceHttpsAndIpCheck(uri, host);
 	}
 
+	void enforceHttpsAndIpCheck(URI uri, String host) {
+		String scheme = uri.getScheme();
+		if (scheme == null || !"https".equalsIgnoreCase(scheme)) {
+			throw new ServiceException("400", "Only HTTPS protocol is allowed for custom baseUrl");
+		}
 
+		try {
+			InetAddress[] addresses = resolveHostAddresses(host);
+			boolean hasBlockedAddress = Arrays.stream(addresses).anyMatch(this::isBlockedAddress);
+			if (hasBlockedAddress) {
+				throw new ServiceException("400", "Internal network addresses are not allowed");
+			}
+		} catch (UnknownHostException e) {
+			throw new ServiceException("400", "Unable to resolve host: " + host);
+		}
+	}
 
+	InetAddress[] resolveHostAddresses(String host) throws UnknownHostException {
+		return InetAddress.getAllByName(host);
+	}
 
+	boolean isBlockedAddress(InetAddress address) {
+		if (address.isLoopbackAddress()
+			|| address.isSiteLocalAddress()
+			|| address.isLinkLocalAddress()
+			|| address.isAnyLocalAddress()
+			|| address.isMulticastAddress()) {
+			return true;
+		}
 
+		if (address instanceof Inet4Address) {
+			return isBlockedIpv4((Inet4Address) address);
+		}
+		if (address instanceof Inet6Address) {
+			return isBlockedIpv6((Inet6Address) address);
+		}
+		return false;
+	}
+
+	private boolean isBlockedIpv4(Inet4Address address) {
+		byte[] octets = address.getAddress();
+		int first = octets[0] & 0xFF;
+		int second = octets[1] & 0xFF;
+		int third = octets[2] & 0xFF;
+
+		if (first == 0) {
+			return true;
+		}
+		if (first == 100 && second >= 64 && second <= 127) {
+			return true;
+		}
+		if (first == 192 && second == 0 && third == 0) {
+			return true;
+		}
+		if (first == 192 && second == 0 && third == 2) {
+			return true;
+		}
+		if (first == 198 && (second == 18 || second == 19)) {
+			return true;
+		}
+		if (first == 198 && second == 51 && third == 100) {
+			return true;
+		}
+		if (first == 203 && second == 0 && third == 113) {
+			return true;
+		}
+		return first >= 240;
+	}
+
+	private boolean isBlockedIpv6(Inet6Address address) {
+		byte[] octets = address.getAddress();
+		int first = octets[0] & 0xFF;
+		int second = octets[1] & 0xFF;
+
+		if ((first & 0xFE) == 0xFC) {
+			return true;
+		}
+		if (first == 0x20 && second == 0x01) {
+			int third = octets[2] & 0xFF;
+			int fourth = octets[3] & 0xFF;
+			if (third == 0x0D && fourth == 0xB8) {
+				return true;
+			}
+		}
+		return first == 0xFF;
+	}
 
 }
