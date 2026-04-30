@@ -384,16 +384,17 @@ public class GitFileReaderService {
 			if (queryComponent.isEmpty()) {
 				// 插入新记录
 				Integer result =  baseMapper.createComponent(component);
-				if (result == 1) {
-					MaterialComponent materialComponent = new MaterialComponent();
-					materialComponent.setMaterialId(1);
-					materialComponent.setComponentId(component.getId());
-					baseMapper.createMaterialComponent(materialComponent);
-					MaterialHistoryComponent materialHistoryComponent = new MaterialHistoryComponent();
-					materialHistoryComponent.setComponentId(component.getId());
-					materialHistoryComponent.setMaterialHistoryId(1);
-					baseMapper.createMaterialHistoryComponent(materialHistoryComponent);
+				if (result != 1) {
+					throw new IllegalStateException("createComponent failed: " + result);
 				}
+				MaterialComponent materialComponent = new MaterialComponent();
+				materialComponent.setMaterialId(1);
+				materialComponent.setComponentId(component.getId());
+				baseMapper.createMaterialComponent(materialComponent);
+				MaterialHistoryComponent materialHistoryComponent = new MaterialHistoryComponent();
+				materialHistoryComponent.setComponentId(component.getId());
+				materialHistoryComponent.setMaterialHistoryId(1);
+				baseMapper.createMaterialHistoryComponent(materialHistoryComponent);
 				addNum = addNum + 1;
 			} else {
 				// 更新记录
