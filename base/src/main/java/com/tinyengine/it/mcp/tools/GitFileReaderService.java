@@ -170,7 +170,7 @@ public class GitFileReaderService {
 	 * @throws IOException If a network or I/O error occurs.
 	 */
 	public static byte[] fetchBytes(String urlString) throws IOException {
-		log.info("开始从 Raw GitHub URL  {} 中读取内容", urlString);
+		log.info("开始从 URL  {} 中读取内容", urlString);
 		URL url = new URL(urlString);
 		HttpURLConnection connection = (HttpURLConnection) url.openConnection();
 		connection.setRequestMethod("GET");
