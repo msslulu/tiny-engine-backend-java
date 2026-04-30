@@ -132,6 +132,9 @@ public class JwtUtil {
      */
     public String generateToken(String username, String roles, String userId,
         List<Tenant> tenants, Integer platformId) {
+        if(username==null ){
+            throw new IllegalArgumentException("Username must not be null");
+        }
         return generateToken(username, roles, userId, (Object) tenants, platformId);
     }
 
@@ -253,6 +256,10 @@ public class JwtUtil {
      * 验证 Token 是否有效（包含黑名单检查和过期检查）
      */
     public boolean validateToken(String token) {
+        if (token == null) {
+            throw new IllegalArgumentException("Token must not be null or empty");
+        }
+
         try {
             // 检查是否在黑名单中
             if (tokenBlacklistService.isTokenBlacklisted(token)) {

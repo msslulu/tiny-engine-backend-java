@@ -35,6 +35,9 @@ public class SM3PasswordUtil {
      * SM3 哈希计算
      */
     public static String sm3Hash(String data, String salt) throws Exception {
+        if(data == null || salt == null) {
+            throw new IllegalArgumentException("数据和盐值不能为空");
+        }
         MessageDigest md = MessageDigest.getInstance(SM3_ALGORITHM, "BC");
         String dataWithSalt = data + salt;
         byte[] hash = md.digest(dataWithSalt.getBytes("UTF-8"));
@@ -54,6 +57,9 @@ public class SM3PasswordUtil {
      * 验证用户密码
      */
     public static boolean verifyPassword(String inputPassword, String storedHash, String salt) throws Exception {
+        if(inputPassword == null || storedHash == null || salt == null) {
+            throw new IllegalArgumentException("输入密码、存储哈希和盐值不能为空");
+        }
         String computedHash = sm3Hash(inputPassword, salt);
         return computedHash.equals(storedHash);
     }
