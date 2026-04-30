@@ -21,6 +21,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.springframework.ai.tool.annotation.Tool;
+import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -63,19 +64,19 @@ public class GitFileReaderService {
 	 * @param url The URL of the file to be read.
 	 * @return A JSON string representing the result of the operation, or an error message if the process fails.
 	 */
-	@Tool(name="bundle_create",description = "给定的 文件URL 读取内容.")
-	public String readFileFromRepo(String url) {
+	@Tool(name="bundle_create",description = "通过给定的bundle.json文件URL同步物料库")
+	public String readFileFromRepo(@ToolParam(description = "bundle.json文件地址，必须是可以在地址栏请求到的")String url) {
 		try {
-			urlValidateUtil.validateFinalUrl(url);
 			log.info("准备从  URL  {} 中读取文件内容", url);
-
+			URL url1 = new URL(url);
+			urlValidateUtil.validateHost(url1.getHost());
+			log.info("URL  {} 的主机验证通过", url);
 			//1.从给定的  URL 读取内容
-			byte[] fileBytes = fetchBytes(url);
+			byte[] fileBytes = fetchBytes(url1);
 
 			// 2. 获取文件名和json内容
 			JsonFile jsonFile = new JsonFile();
-			URI uri = new URI(url);
-			String path = uri.getPath();  // 获取路径部分，例如 /opentiny/tiny-engine/main/designer-demo/public/mock/bundle.json
+			String path = url1.getPath();
 			if (path == null || path.isEmpty()) {
 				return "";
 			}
@@ -165,13 +166,11 @@ public class GitFileReaderService {
 	/**
 	 * Fetches the content of a file from a given URL as a byte array.
 	 *
-	 * @param urlString The URL of the file.
+	 * @param url The URL of the file.
 	 * @return The file content as a byte array.
 	 * @throws IOException If a network or I/O error occurs.
 	 */
-	public static byte[] fetchBytes(String urlString) throws IOException {
-		log.info("开始从 URL  {} 中读取内容", urlString);
-		URL url = new URL(urlString);
+	public static byte[] fetchBytes(URL url) throws IOException {
 		HttpURLConnection connection = (HttpURLConnection) url.openConnection();
 		connection.setRequestMethod("GET");
 		connection.setInstanceFollowRedirects(false);
@@ -439,7 +438,10 @@ public class GitFileReaderService {
 				// 更新记录
 				component.setId(queryComponent.get(0).getId());
 				component.setLastUpdatedTime(LocalDateTime.now());
-				baseMapper.updateComponentById(component);
+				Integer i = baseMapper.updateComponentById(component);
+				if(i != 1) {
+					throw new IllegalStateException("updateComponentById failed: " + i);
+				}
 				updateNum = updateNum + 1;
 			}
 		}
