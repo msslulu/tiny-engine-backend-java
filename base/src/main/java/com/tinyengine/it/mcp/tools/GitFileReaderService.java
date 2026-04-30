@@ -23,6 +23,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -152,7 +153,7 @@ public class GitFileReaderService {
 			return JsonUtils.mapper().writeValueAsString(fileResult);
 		} catch (Exception e) {
 			e.printStackTrace();
-			log.error("从Raw GitHub URL  {} 中读取文件 '{}' 失败: {}", url, "bundle.json", e.getMessage());
+			log.error("从 URL  {} 中读取文件 '{}' 失败: {}", url, "bundle.json", e.getMessage());
 			return "Error: " + e.getMessage();
 		}
 
@@ -344,6 +345,7 @@ public class GitFileReaderService {
 	 * @param bundleDto The BundleDto containing the materials to be parsed.
 	 * @return A Result object containing the BundleResultDto with the parsed components and packages, or an error if parsing fails.
 	 */
+	@Transactional(rollbackFor = Exception.class)
 	public Result<BundleResultDto> parseBundle(BundleDto bundleDto) {
 
 		List<Map<String, Object>> components = bundleDto.getMaterials().getComponents();
@@ -378,6 +380,7 @@ public class GitFileReaderService {
 	 * @param componentList The list of components to be processed for creation or update.
 	 * @return A FileResult object containing the count of inserted and updated records.
 	 */
+	@Transactional(rollbackFor = Exception.class)
 	public FileResult bulkCreate(List<Component> componentList) {
 		int addNum = 0;
 		int updateNum = 0;
@@ -416,11 +419,17 @@ public class GitFileReaderService {
 				MaterialComponent materialComponent = new MaterialComponent();
 				materialComponent.setMaterialId(1);
 				materialComponent.setComponentId(component.getId());
-				baseMapper.createMaterialComponent(materialComponent);
+				Integer materialComponent1 = baseMapper.createMaterialComponent(materialComponent);
+				if(materialComponent1 != 1) {
+					throw new IllegalStateException("createMaterialComponent failed: " + materialComponent1);
+				}
 				MaterialHistoryComponent materialHistoryComponent = new MaterialHistoryComponent();
 				materialHistoryComponent.setComponentId(component.getId());
 				materialHistoryComponent.setMaterialHistoryId(1);
-				baseMapper.createMaterialHistoryComponent(materialHistoryComponent);
+				Integer materialHistoryComponent1 = baseMapper.createMaterialHistoryComponent(materialHistoryComponent);
+				if(materialHistoryComponent1 != 1) {
+					throw new IllegalStateException("createMaterialHistoryComponent failed: " + materialHistoryComponent1);
+				}
 				addNum = addNum + 1;
 			} else {
 				// 更新记录
