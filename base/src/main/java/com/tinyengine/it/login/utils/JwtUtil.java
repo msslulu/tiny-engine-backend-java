@@ -97,7 +97,9 @@ public class JwtUtil {
      */
     public String generateToken(String username, String roles, String userId,
         Object tenants, Integer platformId) {
-
+        if(username==null ){
+            throw new IllegalArgumentException("Username must not be null");
+        }
         Map<String, Object> claims = new HashMap<>();
         claims.put("username", username);
         claims.put("roles", roles);
@@ -132,9 +134,6 @@ public class JwtUtil {
      */
     public String generateToken(String username, String roles, String userId,
         List<Tenant> tenants, Integer platformId) {
-        if(username==null ){
-            throw new IllegalArgumentException("Username must not be null");
-        }
         return generateToken(username, roles, userId, (Object) tenants, platformId);
     }
 
