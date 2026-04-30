@@ -64,6 +64,7 @@ public class GitFileReaderService {
 	 * @param url The URL of the file to be read.
 	 * @return A JSON string representing the result of the operation, or an error message if the process fails.
 	 */
+	@Transactional(rollbackFor = Exception.class)
 	@Tool(name="bundle_create",description = "通过给定的bundle.json文件URL同步物料库")
 	public String readFileFromRepo(@ToolParam(description = "bundle.json文件地址，必须是可以在地址栏请求到的")String url) {
 		try {
@@ -350,6 +351,7 @@ public class GitFileReaderService {
 	 */
 	@Transactional(rollbackFor = Exception.class)
 	public Result<BundleResultDto> parseBundle(BundleDto bundleDto) {
+		BundleMaterial materials = bundleDto.getMaterials();
 
 		List<Map<String, Object>> components = bundleDto.getMaterials().getComponents();
 
