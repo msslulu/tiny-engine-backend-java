@@ -247,7 +247,9 @@ public class Utils {
                 fileInfoList.add(new FileInfo(newFile.getName(), "", true));  // 添加目录
             } else {
                 // 确保父目录存在
-                Files.createDirectories(targetPath.getParent());
+                if(targetPath.getParent() != null) {
+                    Files.createDirectories(targetPath.getParent());
+                }
                 extractFile(zis, newFile);  // 解压文件
                 fileInfoList.add(new FileInfo(newFile.getName(), readFileContent(newFile), false));  // 添加文件内容
             }
