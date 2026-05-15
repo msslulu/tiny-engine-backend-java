@@ -222,13 +222,32 @@ public class Utils {
     private static List<FileInfo> processZipEntries(ZipInputStream zis, File tempDir) throws IOException {
         List<FileInfo> fileInfoList = new ArrayList<>();
         ZipEntry zipEntry;
-
+        // 将 tempDir 转为规范路径（例如解析符号链接、父目录等）
+        Path safeDir = tempDir.toPath().toRealPath();
+        log.info("Created temporary directory at: {}, real path: {}", tempDir.getAbsolutePath(), safeDir);
         while ((zipEntry = zis.getNextEntry()) != null) {
+
+            // 获取 ZIP 条目中的路径（可能包含 ../ 或绝对路径）
+            String entryName = zipEntry.getName();
+
+            // 拼接并规范化路径
+            Path targetPath = safeDir.resolve(entryName).normalize();
+
+            log.info("Processing ZIP entry: {}, target path: {}", entryName, targetPath);
+
+            // 关键校验：确保目标路径仍在 safeDir 之下
+            if (!targetPath.startsWith(safeDir)) {
+                throw new SecurityException("检测到跨目录攻击: " + entryName);
+            }
             File newFile = new File(tempDir, zipEntry.getName());
 
             if (zipEntry.isDirectory()) {
+                // 创建目录（同时确保父目录存在）
+                Files.createDirectories(targetPath);
                 fileInfoList.add(new FileInfo(newFile.getName(), "", true));  // 添加目录
             } else {
+                // 确保父目录存在
+                Files.createDirectories(targetPath.getParent());
                 extractFile(zis, newFile);  // 解压文件
                 fileInfoList.add(new FileInfo(newFile.getName(), readFileContent(newFile), false));  // 添加文件内容
             }
