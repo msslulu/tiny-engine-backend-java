@@ -74,6 +74,9 @@ public class Utils {
      */
     // 泛型去重方法
     public static <T> List<T> removeDuplicates(List<T> list) {
+        if(list == null) {
+            return new ArrayList<>();
+        }
         // 使用 Set 去重
         Set<T> set = new LinkedHashSet<>(list);
         // 返回去重后的 List
@@ -191,7 +194,7 @@ public class Utils {
      * @return File the File
      * @throws IOException IOException
      */
-    private static File createTempDirectory() throws IOException {
+    static File createTempDirectory() throws IOException {
         return Files.createTempDirectory("unzip").toFile();
     }
 
@@ -202,7 +205,7 @@ public class Utils {
      * @return File the File
      * @throws IOException IOException
      */
-    private static File convertMultipartFileToFile(MultipartFile multipartFile) throws IOException {
+    static File convertMultipartFileToFile(MultipartFile multipartFile) throws IOException {
         File tempFile = File.createTempFile("temp", null);
         tempFile.deleteOnExit();
         try (FileOutputStream fos = new FileOutputStream(tempFile)) {
@@ -219,7 +222,7 @@ public class Utils {
      * @return List<FileInfo> the List<FileInfo>
      * @throws IOException IOException
      */
-    private static List<FileInfo> processZipEntries(ZipInputStream zis, File tempDir) throws IOException {
+    static List<FileInfo> processZipEntries(ZipInputStream zis, File tempDir) throws IOException {
         List<FileInfo> fileInfoList = new ArrayList<>();
         ZipEntry zipEntry;
         // 将 tempDir 转为规范路径（例如解析符号链接、父目录等）
@@ -294,7 +297,7 @@ public class Utils {
     }
 
     // 清理临时文件和目录
-    private static void cleanUp(File zipFile, File tempDir) {
+    static void cleanUp(File zipFile, File tempDir) {
         // 删除临时的 zip 文件
         if (zipFile.exists()) {
             if (!zipFile.delete()) {
