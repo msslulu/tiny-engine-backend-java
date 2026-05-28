@@ -13,7 +13,6 @@
 package com.tinyengine.it.common.utils;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -54,8 +53,6 @@ import java.util.zip.ZipOutputStream;
  * @since 2024-10-29
  */
 class UtilsTest {
-    @Mock
-    private  Utils utils;
     // 模拟静态依赖
     private MockedStatic<FileUtil> fileUtilMock;
     private MockedStatic<Files> filesMock;
