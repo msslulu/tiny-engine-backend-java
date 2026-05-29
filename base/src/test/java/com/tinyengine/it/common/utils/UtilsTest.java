@@ -415,13 +415,13 @@ class UtilsTest {
         b.put("y", 100);
         b.put("z", a);
         input.put("a", b);
+
         Map<String, Object> output = Utils.flat(input);
-        output.put("a.z.x", "value");
-        output.put("a.z.y", 100);
+
         assertNotNull(output);
-        assertEquals(3, output.size());
+        assertEquals(2, output.size());
         assertEquals("value", output.get("a.z.x"));
-        assertEquals(100, output.get("a.z.y"));
+        assertEquals(100, output.get("a.y"));
     }
     @Test
     public void test_flat_withMapContainingOtherMaps() {
