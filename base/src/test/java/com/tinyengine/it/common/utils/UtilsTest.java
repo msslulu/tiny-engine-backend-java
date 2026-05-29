@@ -816,7 +816,7 @@ class UtilsTest {
 
     @Test
     void testReadAllBytes_Normal() throws IOException {
-        byte[] expected = "Hello, World!".getBytes();
+        byte[] expected = "Hello, World!".getBytes(StandardCharsets.UTF_8);
         try (InputStream is = new ByteArrayInputStream(expected)) {
             byte[] result = Utils.readAllBytes(is);
             assertThat(result).isEqualTo(expected);
@@ -908,7 +908,7 @@ class UtilsTest {
     }
     @Test
     public void test_readAllBytes_Normal() throws IOException {
-        byte[] expectedBytes = "test data".getBytes();
+        byte[] expectedBytes = "test data".getBytes(StandardCharsets.UTF_8);
         try (InputStream inputStream = new ByteArrayInputStream(expectedBytes)) {
             byte[] result = Utils.readAllBytes(inputStream);
             assertArrayEquals(expectedBytes, result);
@@ -1013,7 +1013,7 @@ class UtilsTest {
     @Test
     void testConvertMultipartFileToFile_Success() throws IOException {
         // 准备 MultipartFile（使用 Spring MockMultipartFile）
-        byte[] content = "Hello, World!".getBytes();
+        byte[] content = "Hello, World!".getBytes(StandardCharsets.UTF_8);
         MultipartFile multipartFile = new MockMultipartFile(
             "file", "test.txt", "text/plain", content);
         List<File> createdFiles = new ArrayList<>();
@@ -1249,7 +1249,7 @@ class UtilsTest {
     @Test
     void testUnzip_InvalidZipFile() throws IOException {
         // 非法的 ZIP 数据（随机字节）
-        byte[] invalidZip = "this is not a zip file".getBytes();
+        byte[] invalidZip = "this is not a zip file".getBytes(StandardCharsets.UTF_8);
         MultipartFile multipartFile = new MockMultipartFile("file", "bad.zip", "application/zip", invalidZip);
 
         // 实际行为可能是抛出 IOException，也可能返回空列表（如果方法内部处理了异常）
