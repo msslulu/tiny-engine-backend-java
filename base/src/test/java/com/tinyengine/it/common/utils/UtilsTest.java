@@ -590,20 +590,20 @@ class UtilsTest {
     @Test
     public void test_encodeObjectToBase64_WithJavaBean() throws Exception {
         User user = new User();
-        user.setUsername("msslulu");
-        user.setEmail("1484036491@qq.com");
+        user.setUsername("test1");
+        user.setEmail("123456789@qq.com");
         String base64 = Utils.encodeObjectToBase64(user);
         assertNotNull(base64);
         String decoded = new String(Base64.getDecoder().decode(base64), StandardCharsets.UTF_8);
-        assertTrue(decoded.contains("msslulu"));
-        assertTrue(decoded.contains("1484036491@qq.com"));
+        assertTrue(decoded.contains("test1"));
+        assertTrue(decoded.contains("123456789@qq.com"));
     }
     @Test
     public void test_decodeBase64ToObject_ValidBase64() throws Exception {
         // 准备 User 对象
         User expectedUser = new User();
-        expectedUser.setUsername("msslulu");
-        expectedUser.setEmail("1484036491@qq.com");
+        expectedUser.setUsername("test1");
+        expectedUser.setEmail("123456789@qq.com");
 
         // 转换为标准 Base64 字符串
         String base64String = toBase64(expectedUser);
@@ -613,8 +613,8 @@ class UtilsTest {
 
         // 验证结果
         assertNotNull(decodedUser);
-        assertEquals("msslulu", decodedUser.getUsername());
-        assertEquals("1484036491@qq.com", decodedUser.getEmail());
+        assertEquals("test1", decodedUser.getUsername());
+        assertEquals("123456789@qq.com", decodedUser.getEmail());
     }
 
     @Test
