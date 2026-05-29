@@ -228,8 +228,8 @@ public class Utils {
         // 将 tempDir 转为规范路径（例如解析符号链接、父目录等）
         Path safeDir = tempDir.toPath().toRealPath();
         log.info("Created temporary directory at: {}, real path: {}", tempDir.getAbsolutePath(), safeDir);
-        while ((zipEntry = zis.getNextEntry()) != null) {
 
+        while ((zipEntry = zis.getNextEntry()) != null) {
             // 获取 ZIP 条目中的路径（可能包含 ../ 或绝对路径）
             String entryName = zipEntry.getName();
 
@@ -242,19 +242,26 @@ public class Utils {
             if (!targetPath.startsWith(safeDir)) {
                 throw new SecurityException("检测到跨目录攻击: " + entryName);
             }
-            File newFile = new File(tempDir, zipEntry.getName());
 
             if (zipEntry.isDirectory()) {
                 // 创建目录（同时确保父目录存在）
                 Files.createDirectories(targetPath);
-                fileInfoList.add(new FileInfo(newFile.getName(), "", true));  // 添加目录
+                // 存储目录信息（使用最后一级名称，保持与原行为一致）
+                String dirName = targetPath.getFileName().toString();
+                fileInfoList.add(new FileInfo(dirName, "", true));
             } else {
                 // 确保父目录存在
-                if(targetPath.getParent() != null) {
-                    Files.createDirectories(targetPath.getParent());
+                Path parent = targetPath.getParent();
+                if (parent != null) {
+                    Files.createDirectories(parent);
                 }
-                extractFile(zis, newFile);  // 解压文件
-                fileInfoList.add(new FileInfo(newFile.getName(), readFileContent(newFile), false));  // 添加文件内容
+                // 解压文件到目标路径（使用已验证的 targetPath）
+                extractFile(zis, targetPath.toFile());
+                // 读取文件内容（同样使用已验证的路径）
+                String content = readFileContent(targetPath.toFile());
+                // 存储文件信息（使用最后一级文件名）
+                String fileName = targetPath.getFileName().toString();
+                fileInfoList.add(new FileInfo(fileName, content, false));
             }
             zis.closeEntry();
         }

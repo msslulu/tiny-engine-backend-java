@@ -594,9 +594,9 @@ class UtilsTest {
         user.setEmail("1484036491@qq.com");
         String base64 = Utils.encodeObjectToBase64(user);
         assertNotNull(base64);
-        assertFalse(base64.contains("lulu"));
-        assertFalse(base64.contains("22"));
-        assertFalse(base64.contains("image/"));
+        String decoded = new String(Base64.getDecoder().decode(base64), StandardCharsets.UTF_8);
+        assertTrue(decoded.contains("msslulu"));
+        assertTrue(decoded.contains("1484036491@qq.com"));
     }
     @Test
     public void test_decodeBase64ToObject_ValidBase64() throws Exception {
