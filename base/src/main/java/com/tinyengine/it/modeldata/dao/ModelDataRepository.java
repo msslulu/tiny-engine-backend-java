@@ -26,6 +26,8 @@ public interface ModelDataRepository extends JpaRepository<ModelData, Long>, Jpa
 	 */
 	List<ModelData> findByModelIdAndTenantId(Integer modelId, String tenantId);
 
+	ModelData findByModelIdAndTenantIdAndId(Integer modelId, String tenantId, Integer id);
+
 
 	/**
 	 * 统计某模型下的数据条数

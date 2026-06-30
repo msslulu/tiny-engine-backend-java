@@ -176,8 +176,6 @@ public class DynamicService {
         String userId = loginUserContext.getLoginUserId();
         String tenantId = DefaultLoginUserContext.getCurrentTenant();
         Integer modelId=null;
-        System.out.println("modelId: " + modelId + ", tenantId: " + tenantId + ", params: " + dto.getParams() + ", userId: " + userId);
-
         List<Model> modelList = modelService.getModelByEnName(dto.getNameEn());
         if (modelList.isEmpty()) {
             throw new IllegalArgumentException("模型不存在: " + dto.getNameEn());
@@ -188,7 +186,7 @@ public class DynamicService {
         log.info("modelId: {}, tenantId: {}, userId: {}", modelId, tenantId, userId);
         log.info("Updating table: {}, with params: {}, data: {}", tableName, dto.getParams(), dto.getData());
         dto.getData().put("updated_by", userId);
-        Map<String, Object> update = modelDataCacheService.update(Integer.parseInt(dto.getParams().get("id").toString()), dto.getData(), userId);
+        Map<String, Object> update = modelDataCacheService.update(modelId,tenantId,Integer.parseInt(dto.getParams().get("id").toString()), dto.getData(), userId);
         result.put("update", update.get("_row"));
         return result;
     }
@@ -209,9 +207,17 @@ public class DynamicService {
         conditions.put("id", dto.getId());
         params.put("tableName", tableName);
         params.put("conditions", conditions);
+        String tenantId = DefaultLoginUserContext.getCurrentTenant();
+        Integer modelId=null;
+        List<Model> modelList = modelService.getModelByEnName(dto.getNameEn());
+        if (modelList.isEmpty()) {
+            throw new IllegalArgumentException("模型不存在: " + dto.getNameEn());
+        } else {
+            modelId = modelList.get(0).getId();
+        }
         log.info("Deleting from table: {}, with params: {}", tableName, params);
         Map<String, Object> result = new HashMap<>();
-        Map<String, Object> objectMap = modelDataCacheService.delete(Long.valueOf(dto.getId()));
+        Map<String, Object> objectMap = modelDataCacheService.delete(modelId,tenantId,Long.valueOf(dto.getId()));
         result.put("delete", objectMap.get("_row"));
         return result;
     }

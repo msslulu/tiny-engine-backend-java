@@ -6,6 +6,7 @@ import com.tinyengine.it.dynamic.dto.DynamicQuery;
 import com.tinyengine.it.modeldata.dao.ModelDataRepository;
 import com.tinyengine.it.modeldata.entity.ModelData;
 
+import com.tinyengine.it.modeldata.exception.BusinessException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.*;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -204,7 +205,11 @@ public class ModelDataCacheService {
 		return result;
 	}
 
-	public  Map<String, Object>  update(Integer dataId, Map<String, Object> newData, String userId) throws Exception {
+	public  Map<String, Object>  update(Integer modelId,String tenantId,Integer dataId, Map<String, Object> newData, String userId) throws Exception {
+		ModelData entity = modelDataRepo.findByModelIdAndTenantIdAndId(modelId, tenantId, dataId);
+		if (entity == null) {
+			throw new BusinessException("数据不存在");
+		}
 		ModelData updated = dynamicModelDataService.update(dataId, newData, userId);
 		invalidateCache(updated.getModelId(), updated.getTenantId());
 		Map<String, Object> result = new HashMap<>(updated.getDataJson());
@@ -216,8 +221,11 @@ public class ModelDataCacheService {
 	}
 
 
-	public Map<String, Object>  delete(Long dataId)throws Exception {
-		ModelData entity = modelDataRepo.findById(dataId).orElseThrow();
+	public Map<String, Object>  delete(Integer modelId,String tenantId,Long dataId)throws Exception {
+		ModelData entity = modelDataRepo.findByModelIdAndTenantIdAndId(modelId, tenantId, Math.toIntExact(dataId));
+		if (entity == null) {
+			throw new BusinessException("数据不存在");
+		}
 		modelDataRepo.deleteById(dataId);
 		invalidateCache(entity.getModelId(), entity.getTenantId());
 		Map<String, Object> result = new HashMap<>();
