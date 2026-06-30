@@ -124,7 +124,7 @@ public class LoginServiceImpl extends ServiceImpl<UserMapper, User> implements L
         return Result.success(ExceptionEnum.CM334.getResultCode(), ExceptionEnum.CM334.getResultMsg());
     }
 
-    private boolean validatorPublicKey(String salt, PublicKey publicKey, PrivateKey privateKey) throws Exception {
+    boolean validatorPublicKey(String salt, PublicKey publicKey, PrivateKey privateKey) throws Exception {
         String plainSalt = decrypt(salt, privateKey);
         String cipherSalt = encrypt(plainSalt, publicKey);
         String decryptSalt = decrypt(cipherSalt, privateKey);
