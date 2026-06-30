@@ -12,6 +12,12 @@ import java.util.stream.Collectors;
 @Service
 public class ValidationService {
 	public void validate(Map<String, Object> data, List<ParametersDto> fieldDefs) throws Exception{
+		if(fieldDefs == null || fieldDefs.isEmpty()) {
+			throw new BusinessException("字段定义不能为空" );
+		}
+		if(data == null || data.isEmpty()) {
+			throw new BusinessException("数据不能为空" );
+		}
 		// 1. 必填校验
 		Set<String> requiredProps = fieldDefs.stream()
 			.filter(ParametersDto::getRequired)

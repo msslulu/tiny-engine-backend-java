@@ -38,7 +38,7 @@ public class ModelDataCacheService {
 	/**
 	 * 加载数据列表（缓存优先）
 	 */
-	private List<Map<String, Object>> loadDataList(Integer modelId, String tenantId) {
+	public List<Map<String, Object>> loadDataList(Integer modelId, String tenantId) {
 		String key = cacheKey(modelId, tenantId);
 		String cachedJson = redisTemplate.opsForValue().get(key);
 		if (cachedJson != null) {
