@@ -116,7 +116,7 @@ public class ApiKeyAuthFilter  extends OncePerRequestFilter {
 		try {
 			filterChain.doFilter(wrappedRequest, response);
 		} finally {
-			DefaultLoginUserContext.clear();
+			DefaultLoginUserContext.clearCurrentTenant();
 		}
 
 

@@ -78,6 +78,8 @@ class ModelDataCacheServiceTest {
 	void testUpdate_Success() throws Exception {
 		// Arrange
 		Integer dataId = 1;
+		Integer modelId = 1;
+		String tenantId = "1";
 		String userId = "user1";
 		Map<String, Object> newData = new HashMap<>();
 		newData.put("field1", "newValue");
@@ -85,12 +87,15 @@ class ModelDataCacheServiceTest {
 		ModelData mockModelData = new ModelData();
 		mockModelData.setId(1);
 		mockModelData.setVersion("0.0.2");
+		mockModelData.setModelId(1);
 		mockModelData.setDataJson(newData);
+		mockModelData.setTenantId("1");
 
+       when(modelDataRepo.findByModelIdAndTenantIdAndId(modelId, tenantId, dataId)).thenReturn(mockModelData);
 		when(dynamicModelDataService.update(dataId, newData, userId)).thenReturn(mockModelData);
 
 		// Act
-		Map<String, Object> result = modelDataCacheService.update(dataId, newData, userId);
+		Map<String, Object> result = modelDataCacheService.update(modelId,tenantId,dataId, newData, userId);
 
 		// Assert
 		assertNotNull(result);
@@ -103,20 +108,20 @@ class ModelDataCacheServiceTest {
 	void testDelete_Success() throws Exception {
 		// Arrange
 		Integer dataId = 1;
+		Integer modelId = 1;
+		String tenantId = "1";
 		ModelData mockModelData = new ModelData();
 		mockModelData.setId(Math.toIntExact(dataId));
 		mockModelData.setModelId(1);
-		mockModelData.setTenantId("tenant1");
-
-		when(modelDataRepo.findById(Long.valueOf(dataId))).thenReturn(Optional.of(mockModelData));
+		mockModelData.setTenantId("1");
+        when(modelDataRepo.findByModelIdAndTenantIdAndId(modelId, tenantId, Math.toIntExact(dataId))).thenReturn(mockModelData);
 
 		// Act
-		Map<String, Object> result = modelDataCacheService.delete(Long.valueOf(dataId));
+		Map<String, Object> result = modelDataCacheService.delete(modelId,tenantId,Long.valueOf(dataId));
 
 		// Assert
 		assertNotNull(result);
 		assertEquals(dataId, result.get("_id"));
-		verify(modelDataRepo, times(1)).findById(Long.valueOf(dataId));
 		verify(modelDataRepo, times(1)).deleteById(Long.valueOf(dataId));
 		verify(redisTemplate, times(1)).delete(anyString());
 	}
