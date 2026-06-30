@@ -356,7 +356,7 @@ public enum ExceptionEnum implements IBaseError {
     /**
      * Cm 345 exception enum.
      */
-    CM346("CM346", "缺少请求头"),;
+    CM346("CM346", "缺少请求头");
     /**
      * 错误码
      */
