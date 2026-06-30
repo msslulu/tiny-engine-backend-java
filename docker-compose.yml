@@ -35,7 +35,6 @@ services:
     ports:
       - "6379:6379"
     environment:
-      REDIS_PASSWORD: "000000"
       TZ: Asia/Shanghai
     volumes:
       - ./docker-deploy-data/redis/data/:/data
@@ -43,7 +42,6 @@ services:
       - ./docker-deploy-data/redis/logs/:/logs/
     command: >
       redis-server
-      --requirepass ${REDIS_PASSWORD}
       --appendonly yes
       --maxmemory 256mb
       --maxmemory-policy allkeys-lru
@@ -65,7 +63,6 @@ services:
       - CHROMA_BASE_URL=http://tiny-engine-rag:8000
       - MODEL_PATH=/app/all-MiniLM-L6-v2/model.onnx
       - TOKENIZER_PATH=/app/all-MiniLM-L6-v2/tokenizer.json
-      - SPRING_DATA_REDIS_PASSWORD="000000"
 
 
   tiny-engine:

@@ -39,7 +39,6 @@ spring:
       host: tiny-engine-redis
       port: 6379
       database: 0              # 默认库，Nonce 建议单独使用一个库（如 1），避免业务数据干扰
-      password: ${SPRING_DATA_REDIS_PASSWORD:}
       # 连接超时配置（非常重要）
       connect-timeout: 5000ms   # 建立连接超时，5秒
       timeout: 5000ms          # 读取数据超时，5秒
