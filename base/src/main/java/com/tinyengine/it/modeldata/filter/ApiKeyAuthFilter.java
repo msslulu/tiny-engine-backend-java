@@ -1,5 +1,6 @@
 package com.tinyengine.it.modeldata.filter;
 
+import com.tinyengine.it.login.config.context.DefaultLoginUserContext;
 import com.tinyengine.it.login.utils.SignatureUtil;
 import com.tinyengine.it.modeldata.entity.ApiKeyEntity;
 import com.tinyengine.it.modeldata.service.ApiKeyService;
@@ -38,6 +39,12 @@ public class ApiKeyAuthFilter  extends OncePerRequestFilter {
 		String requestURI = request.getRequestURI();
 		if (!requestURI.startsWith("/platform-center/api/model-data")) {
 			filterChain.doFilter(request, response);
+			return;
+		}
+		String org = request.getHeader("X-Lowcode-Org");
+        if(org == null || org.isEmpty()) {
+			response.setStatus(401);
+			response.getWriter().write("Missing required header: X-Lowcode-Org");
 			return;
 		}
 		// 1. 包装请求以支持多次读取 Body
@@ -104,9 +111,14 @@ public class ApiKeyAuthFilter  extends OncePerRequestFilter {
 			return;
 		}
 
+		// 9. 认证通过，将租户信息存入线程上下文
+		DefaultLoginUserContext.setCurrentTenant(org);
+		try {
+			filterChain.doFilter(wrappedRequest, response);
+		} finally {
+			DefaultLoginUserContext.clear();
+		}
 
-
-		filterChain.doFilter(wrappedRequest, response);
 
 	}
 

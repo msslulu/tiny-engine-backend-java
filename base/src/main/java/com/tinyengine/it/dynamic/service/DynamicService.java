@@ -5,6 +5,7 @@ import com.tinyengine.it.common.context.LoginUserContext;
 import com.tinyengine.it.common.utils.SqlIdentifierValidator;
 import com.tinyengine.it.dynamic.dao.ModelDataDao;
 import com.tinyengine.it.dynamic.dto.*;
+import com.tinyengine.it.login.config.context.DefaultLoginUserContext;
 import com.tinyengine.it.model.dto.ParametersDto;
 import com.tinyengine.it.model.entity.Model;
 import com.tinyengine.it.modeldata.service.ModelDataCacheService;
@@ -57,13 +58,12 @@ public class DynamicService {
         params.put("orderBy", dto.getOrderBy());
         params.put("orderType", dto.getOrderType());
 
-        String tenantId = null;
+        String tenantId = DefaultLoginUserContext.getCurrentTenant();
         Integer modelId=null;
         List<Model> modelList = modelService.getModelByEnName(dto.getNameEn());
         if (modelList.isEmpty()) {
             throw new IllegalArgumentException("模型不存在: " + dto.getNameEn());
         } else {
-            tenantId = modelList.get(0).getTenantId();
             modelId = modelList.get(0).getId();
         }
         log.info("Querying modelId: {}, tenantId: {}, params: {}", modelId, tenantId, params);
@@ -125,16 +125,15 @@ public class DynamicService {
         params.put("tableName", tableName);
         params.put("data", dto.getParams());
 
-        String userId;
-        String tenantId;
+        String tenantId = DefaultLoginUserContext.getCurrentTenant();
         Integer modelId;
+        String userId;
         List<Model> modelList = modelService.getModelByEnName(dto.getNameEn());
         if (modelList.isEmpty()) {
             throw new IllegalArgumentException("模型不存在: " + dto.getNameEn());
         } else {
             userId = modelList.get(0).getCreatedBy();
             modelId = modelList.get(0).getId();
-            tenantId= modelList.get(0).getTenantId();
         }
 
         dto.getParams().put("created_by", userId);
@@ -175,7 +174,7 @@ public class DynamicService {
         params.put("conditions", dto.getParams());
         Map<String, Object> result = new HashMap<>();
         String userId = loginUserContext.getLoginUserId();
-        String tenantId = loginUserContext.getTenantId();
+        String tenantId = DefaultLoginUserContext.getCurrentTenant();
         Integer modelId=null;
         System.out.println("modelId: " + modelId + ", tenantId: " + tenantId + ", params: " + dto.getParams() + ", userId: " + userId);
 
@@ -185,7 +184,6 @@ public class DynamicService {
         } else {
             userId = modelList.get(0).getCreatedBy();
             modelId = modelList.get(0).getId();
-            tenantId= modelList.get(0).getTenantId();
         }
         log.info("modelId: {}, tenantId: {}, userId: {}", modelId, tenantId, userId);
         log.info("Updating table: {}, with params: {}, data: {}", tableName, dto.getParams(), dto.getData());
