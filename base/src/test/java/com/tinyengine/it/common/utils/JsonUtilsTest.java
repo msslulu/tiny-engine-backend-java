@@ -3,6 +3,7 @@ package com.tinyengine.it.common.utils;
 
 import org.junit.jupiter.api.Test;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
@@ -269,7 +270,7 @@ class JsonUtilsTest {
 	void testDecode_ByteArray() {
 		// Arrange
 		String json = "{\"key\":\"value\",\"number\":123}";
-		byte[] jsonBytes = json.getBytes();
+		byte[] jsonBytes = json.getBytes(StandardCharsets.UTF_8);
 
 		// Act
 		Map<String, Object> result = JsonUtils.decode(jsonBytes, Map.class);
