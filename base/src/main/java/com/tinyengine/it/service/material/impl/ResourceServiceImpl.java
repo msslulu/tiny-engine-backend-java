@@ -198,6 +198,8 @@ public class ResourceServiceImpl extends ServiceImpl<ResourceMapper, Resource> i
 
         QueryWrapper<Resource> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("hash", resource.getHash());
+        queryWrapper.eq("app_id", resource.getAppId());
+        queryWrapper.eq("tenant_id", loginUserContext.getTenantId());
         // 接入租户系统需添加租户id查询
         Resource resourceResult = this.baseMapper.selectOne(queryWrapper);
         if (resourceResult != null) {
