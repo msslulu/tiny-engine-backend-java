@@ -200,13 +200,7 @@ public class ResourceServiceImpl extends ServiceImpl<ResourceMapper, Resource> i
             resource.setThumbnailUrl(thumbnailUrl);
             resource.setThumbnailData(ImageThumbnailGenerator.createThumbnail(resource.getResourceData(), 200, 200));
         }
-        QueryWrapper<Resource> queryWrapper = new QueryWrapper<>();
-        queryWrapper.eq("hash", resource.getHash());
-        // 接入租户系统需添加租户id查询
-        Resource resourceResult = this.baseMapper.selectOne(queryWrapper);
-        if (resourceResult != null) {
-            throw new ServiceException(ExceptionEnum.CM003.getResultCode(), ExceptionEnum.CM003.getResultMsg());
-        }
+
         int createResult = this.baseMapper.createResource(resource);
         if (createResult != 1) {
             throw new ServiceException(ExceptionEnum.CM002.getResultCode(), ExceptionEnum.CM002.getResultMsg());
