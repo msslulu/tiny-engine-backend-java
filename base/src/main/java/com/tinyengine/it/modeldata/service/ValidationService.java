@@ -11,6 +11,9 @@ import java.util.stream.Collectors;
 
 @Service
 public class ValidationService {
+	private static final Set<String> SYSTEM_FIELDS = Set.of(
+		"id", "created_at", "updated_at", "deleted_at", "created_by", "updated_by","tenantId"
+	);
 	public void validate(Map<String, Object> data, List<ParametersDto> fieldDefs) throws Exception{
 		if(fieldDefs == null || fieldDefs.isEmpty()) {
 			throw new BusinessException("字段定义不能为空" );
@@ -44,9 +47,8 @@ public class ValidationService {
 		// 3. 不允许出现未定义字段（可选）
 		Set<String> definedProps = fieldDefs.stream().map(ParametersDto::getProp).collect(Collectors.toSet());
 		// 定义系统字段忽略列表（这些字段允许在 data 中出现，即使不在模型定义中）
-		Set<String> ignoredFields = Set.of("created_by", "tenantId","updated_by");
 		for (String prop : data.keySet()) {
-			if (ignoredFields.contains(prop)) {
+			if (SYSTEM_FIELDS.contains(prop)) {
 				continue; // 跳过系统字段，不校验
 			}
 			if (!definedProps.contains(prop)) {

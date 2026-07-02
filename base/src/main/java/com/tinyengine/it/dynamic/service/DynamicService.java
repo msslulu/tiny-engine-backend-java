@@ -22,8 +22,6 @@ import java.util.*;
 @Service
 public class DynamicService {
     @Autowired
-    private ModelDataDao dynamicDao;
-    @Autowired
     private ModelService modelService;
     @Autowired
     private LoginUserContext loginUserContext;
@@ -34,53 +32,27 @@ public class DynamicService {
             "id", "created_at", "updated_at", "deleted_at", "created_by", "updated_by"
     );
 
-    public List<JSONObject> query(DynamicQuery dto) {
-        String tableName = getTableName(dto.getNameEn());
-        Map<String, Object> params = new HashMap<>();
-        params.put("tableName", tableName);
-        params.put("fields", dto.getFields());
-        params.put("conditions", dto.getParams());
-        params.put("pageNum", dto.getCurrentPage());
-        params.put("pageSize", dto.getPageSize());
-        params.put("orderBy", dto.getOrderBy());
-        params.put("orderType", dto.getOrderType());
 
-        return dynamicDao.select(params);
-    }
     public Page<Map<String, Object>> queryPage(DynamicQuery dto) {
-        String tableName = getTableName(dto.getNameEn());
-        Map<String, Object> params = new HashMap<>();
-        params.put("tableName", tableName);
-        params.put("fields", dto.getFields());
-        params.put("conditions", dto.getParams());
-        params.put("pageNum", dto.getCurrentPage());
-        params.put("pageSize", dto.getPageSize());
-        params.put("orderBy", dto.getOrderBy());
-        params.put("orderType", dto.getOrderType());
-
-        String tenantId = DefaultLoginUserContext.getCurrentTenant();
-        Integer modelId=null;
+        if (dto.getNameEn() == null || dto.getNameEn().trim().isEmpty()) {
+            throw new IllegalArgumentException("查询操作必须指定模型名称");
+        }
+        Integer modelId;
         List<Model> modelList = modelService.getModelByEnName(dto.getNameEn());
         if (modelList.isEmpty()) {
             throw new IllegalArgumentException("模型不存在: " + dto.getNameEn());
         } else {
             modelId = modelList.get(0).getId();
         }
-        log.info("Querying modelId: {}, tenantId: {}, params: {}", modelId, tenantId, params);
+        String tenantId = loginUserContext.getTenantId();
+
+        log.info("Querying modelId: {}, tenantId: {}", modelId, tenantId);
         Page<Map<String, Object>> query = modelDataCacheService.query(modelId, tenantId, dto);
         log.info("Queried query: {}, result size: {}", query, query.getContent().size());
         return query;
     }
 
-    public Long count(String tableName, Map<String, Object> conditions) {
-        Map<String, Object> params = new HashMap<>();
-        params.put("tableName", tableName);
-        params.put("fields", Arrays.asList("COUNT(*) as count"));
-        params.put("conditions", conditions);
 
-        List<JSONObject> result = dynamicDao.select(params);
-        return Long.parseLong(result.get(0).get("count").toString());
-    }
 
     public Map<String, Object> queryWithPage(DynamicQuery dto) {
         if (dto.getNameEn() == null || dto.getNameEn().trim().isEmpty()) {
@@ -120,19 +92,14 @@ public class DynamicService {
         }
         validateTableExists(dto.getNameEn());
         validateTableAndData(dto.getNameEn(), dto.getParams());
-        String tableName = getTableName(dto.getNameEn());
-        Map<String, Object> params = new HashMap<>();
-        params.put("tableName", tableName);
-        params.put("data", dto.getParams());
 
-        String tenantId = DefaultLoginUserContext.getCurrentTenant();
         Integer modelId;
-        String userId;
+        String userId = loginUserContext.getLoginUserId();
+        String tenantId = loginUserContext.getTenantId();
         List<Model> modelList = modelService.getModelByEnName(dto.getNameEn());
         if (modelList.isEmpty()) {
             throw new IllegalArgumentException("模型不存在: " + dto.getNameEn());
         } else {
-            userId = modelList.get(0).getCreatedBy();
             modelId = modelList.get(0).getId();
         }
 
@@ -167,24 +134,17 @@ public class DynamicService {
         validateTableExists(dto.getNameEn());
         validateTableAndData(dto.getNameEn(), dto.getData());
         validateTableAndData(dto.getNameEn(), dto.getParams());
-        String tableName = getTableName(dto.getNameEn());
-        Map<String, Object> params = new HashMap<>();
-        params.put("tableName", tableName);
-        params.put("data", dto.getData());
-        params.put("conditions", dto.getParams());
         Map<String, Object> result = new HashMap<>();
         String userId = loginUserContext.getLoginUserId();
-        String tenantId = DefaultLoginUserContext.getCurrentTenant();
-        Integer modelId=null;
+        String tenantId = loginUserContext.getTenantId();
+        Integer modelId;
         List<Model> modelList = modelService.getModelByEnName(dto.getNameEn());
         if (modelList.isEmpty()) {
             throw new IllegalArgumentException("模型不存在: " + dto.getNameEn());
         } else {
-            userId = modelList.get(0).getCreatedBy();
             modelId = modelList.get(0).getId();
         }
         log.info("modelId: {}, tenantId: {}, userId: {}", modelId, tenantId, userId);
-        log.info("Updating table: {}, with params: {}, data: {}", tableName, dto.getParams(), dto.getData());
         dto.getData().put("updated_by", userId);
         Map<String, Object> update = modelDataCacheService.update(modelId,tenantId,Integer.parseInt(dto.getParams().get("id").toString()), dto.getData(), userId);
         result.put("update", update.get("_row"));
@@ -200,14 +160,7 @@ public class DynamicService {
             throw new IllegalArgumentException("删除操作必须指定id");
         }
         validateTableExists(dto.getNameEn());
-        String tableName = getTableName(dto.getNameEn());
-
-        Map<String, Object> params = new HashMap<>();
-        Map<Object, Object> conditions = new HashMap<>();
-        conditions.put("id", dto.getId());
-        params.put("tableName", tableName);
-        params.put("conditions", conditions);
-        String tenantId = DefaultLoginUserContext.getCurrentTenant();
+        String tenantId = loginUserContext.getTenantId();
         Integer modelId=null;
         List<Model> modelList = modelService.getModelByEnName(dto.getNameEn());
         if (modelList.isEmpty()) {
@@ -215,17 +168,13 @@ public class DynamicService {
         } else {
             modelId = modelList.get(0).getId();
         }
-        log.info("Deleting from table: {}, with params: {}", tableName, params);
+        log.info("Deleting from modelId: {}, tenantId: {}, id: {}", modelId, tenantId, dto.getId());
         Map<String, Object> result = new HashMap<>();
         Map<String, Object> objectMap = modelDataCacheService.delete(modelId,tenantId,Long.valueOf(dto.getId()));
         result.put("delete", objectMap.get("_row"));
         return result;
     }
 
-    public List<Map<String, Object>> getTableStructure(String tableName) {
-        validateTableExists(tableName);
-        return dynamicDao.getTableStructure(tableName);
-    }
 
     private Set<String> getAllowedFields(String nameEn) {
         List<Model> modelList = modelService.getModelByEnName(nameEn);
