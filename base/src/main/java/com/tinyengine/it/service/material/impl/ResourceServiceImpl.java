@@ -203,7 +203,6 @@ public class ResourceServiceImpl extends ServiceImpl<ResourceMapper, Resource> i
         queryWrapper.eq("tenant_id", loginUserContext.getTenantId());
         // 接入租户系统需添加租户id查询
         Resource resourceResult = this.baseMapper.selectOne(queryWrapper);
-        log.info("resourceResult: " + resourceResult);
         if (resourceResult != null) {
             return resourceResult;
         }
