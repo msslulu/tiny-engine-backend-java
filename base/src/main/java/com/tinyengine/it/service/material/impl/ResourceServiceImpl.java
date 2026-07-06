@@ -198,9 +198,6 @@ public class ResourceServiceImpl extends ServiceImpl<ResourceMapper, Resource> i
 
 
         QueryWrapper<Resource> queryWrapper = new QueryWrapper<>();
-        log.info("hash: " + resource.getHash());
-        log.info("app id : " + resource.getAppId());
-        log.info("tenantId : " + loginUserContext.getTenantId());
         queryWrapper.eq("hash", resource.getHash());
         queryWrapper.eq("app_id", resource.getAppId());
         queryWrapper.eq("tenant_id", loginUserContext.getTenantId());
