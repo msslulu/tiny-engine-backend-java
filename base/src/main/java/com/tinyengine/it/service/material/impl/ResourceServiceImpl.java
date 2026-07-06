@@ -26,6 +26,7 @@ import com.tinyengine.it.mapper.ResourceMapper;
 import com.tinyengine.it.model.entity.Resource;
 import com.tinyengine.it.model.entity.ResourceGroupResource;
 import com.tinyengine.it.service.material.ResourceService;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -35,7 +36,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-
+@Slf4j
 @Service
 public class ResourceServiceImpl extends ServiceImpl<ResourceMapper, Resource> implements ResourceService {
     /**
@@ -197,15 +198,20 @@ public class ResourceServiceImpl extends ServiceImpl<ResourceMapper, Resource> i
 
 
         QueryWrapper<Resource> queryWrapper = new QueryWrapper<>();
+        log.info("hash: " + resource.getHash());
+        log.info("app id : " + resource.getAppId());
+        log.info("tenantId : " + loginUserContext.getTenantId());
         queryWrapper.eq("hash", resource.getHash());
         queryWrapper.eq("app_id", resource.getAppId());
         queryWrapper.eq("tenant_id", loginUserContext.getTenantId());
         // 接入租户系统需添加租户id查询
         Resource resourceResult = this.baseMapper.selectOne(queryWrapper);
+        log.info("resourceResult: " + resourceResult);
         if (resourceResult != null) {
             return resourceResult;
         }
         if (!StringUtils.isEmpty(resourceData)) {
+            resource.setTenantId(loginUserContext.getTenantId());
             resource.setResourceUrl(resourceUrl);
             resource.setThumbnailUrl(thumbnailUrl);
             resource.setThumbnailData(ImageThumbnailGenerator.createThumbnail(resource.getResourceData(), 200, 200));
