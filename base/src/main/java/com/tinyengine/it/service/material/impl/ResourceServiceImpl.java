@@ -35,7 +35,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-
 @Service
 public class ResourceServiceImpl extends ServiceImpl<ResourceMapper, Resource> implements ResourceService {
     /**
@@ -195,17 +194,21 @@ public class ResourceServiceImpl extends ServiceImpl<ResourceMapper, Resource> i
         String resourceUrl = tinyEngineUrl + "/" + imageEncodedName;
         String thumbnailUrl = tinyEngineUrl + "/" + thumbnailEncodedName;
 
-        if (!StringUtils.isEmpty(resourceData)) {
-            resource.setResourceUrl(resourceUrl);
-            resource.setThumbnailUrl(thumbnailUrl);
-            resource.setThumbnailData(ImageThumbnailGenerator.createThumbnail(resource.getResourceData(), 200, 200));
-        }
+
         QueryWrapper<Resource> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("hash", resource.getHash());
+        queryWrapper.eq("app_id", resource.getAppId());
+        queryWrapper.eq("tenant_id", loginUserContext.getTenantId());
         // 接入租户系统需添加租户id查询
         Resource resourceResult = this.baseMapper.selectOne(queryWrapper);
         if (resourceResult != null) {
-            throw new ServiceException(ExceptionEnum.CM003.getResultCode(), ExceptionEnum.CM003.getResultMsg());
+            return resourceResult;
+        }
+        if (!StringUtils.isEmpty(resourceData)) {
+            resource.setTenantId(loginUserContext.getTenantId());
+            resource.setResourceUrl(resourceUrl);
+            resource.setThumbnailUrl(thumbnailUrl);
+            resource.setThumbnailData(ImageThumbnailGenerator.createThumbnail(resource.getResourceData(), 200, 200));
         }
         int createResult = this.baseMapper.createResource(resource);
         if (createResult != 1) {
