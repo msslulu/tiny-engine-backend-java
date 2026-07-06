@@ -26,7 +26,6 @@ import com.tinyengine.it.mapper.ResourceMapper;
 import com.tinyengine.it.model.entity.Resource;
 import com.tinyengine.it.model.entity.ResourceGroupResource;
 import com.tinyengine.it.service.material.ResourceService;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -36,7 +35,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-@Slf4j
 @Service
 public class ResourceServiceImpl extends ServiceImpl<ResourceMapper, Resource> implements ResourceService {
     /**
