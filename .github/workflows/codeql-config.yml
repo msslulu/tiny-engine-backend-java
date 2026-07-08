@@ -1,4 +1,4 @@
-# .github/codeql/codeql-config.yml
+# .github/workflows/codeql-config.yml
 paths-ignore:
   - '**/target/'          # Maven 编译输出
   - '**/src/test/'        # 单元测试代码（测试断言常被误报）
