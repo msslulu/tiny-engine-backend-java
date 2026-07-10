@@ -235,6 +235,29 @@
                     <target>17</target>   <!-- 生成字节码的 Java 版本 -->
                 </configuration>
             </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-checkstyle-plugin</artifactId>
+                <version>3.3.1</version>
+                <configuration>
+                    <!-- 指定华为Java编码规范的配置文件 -->
+                    <configLocation>settings/checkstyle.xml</configLocation>
+                    <!-- 检查失败时构建失败（阻止CI通过） -->
+                    <failOnViolation>true</failOnViolation>
+                    <!-- 输出格式 -->
+                    <outputFileFormat>xml</outputFileFormat>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>checkstyle-check</id>
+                        <phase>validate</phase>  <!-- 或 verify，在早期阶段就执行 -->
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
 </project>
