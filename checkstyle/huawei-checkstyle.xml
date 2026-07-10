@@ -35,17 +35,6 @@
     <!-- 检查是否导入的包没有使用-->
     <module name="UnusedImports"/>
 
-    <!-- Checks for whitespace
-    <module name="EmptyForIteratorPad"/>
-    <module name="MethodParamPad"/>
-    <module name="NoWhitespaceAfter"/>
-    <module name="NoWhitespaceBefore"/>
-    <module name="OperatorWrap"/>
-    <module name="ParenPad"/>
-    <module name="TypecastParenPad"/>
-    <module name="WhitespaceAfter"/>
-    <module name="WhitespaceAround"/>
-    -->
 
     <!-- 检查类和接口的javadoc 默认不检查author 和version tags
       authorFormat: 检查author标签的格式
