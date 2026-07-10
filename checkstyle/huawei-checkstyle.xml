@@ -56,7 +56,6 @@
     <module name="JavadocMethod">
       <property name="scope" value="private"/>
       <property name="allowMissingParamTags" value="false"/>
-
     </module>
 
     <!-- 检查类变量的注释
