@@ -14,6 +14,11 @@
     <property name="max" value="2500"/>
   </module>
 
+  <!-- Checks that property files contain the same keys. -->
+  <!-- 检查**.properties配置文件 是否有相同的key
+  <module name="Translation">
+  </module>
+  -->
 
   <module name="TreeWalker">
 
