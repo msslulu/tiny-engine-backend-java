@@ -61,8 +61,7 @@
       <property name="tokens" value="METHOD_DEF"/>
       <property name="allowUndeclaredRTE" value="true"/>
       <property name="allowThrowsTagsForSubclasses" value="true"/>
-      <!--允许get set 方法没有注释-->
-      <property name="allowMissingPropertyJavadoc" value="true"/>
+
     </module>
 
     <!-- 检查类变量的注释
