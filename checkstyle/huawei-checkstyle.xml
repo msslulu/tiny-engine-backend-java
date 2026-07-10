@@ -56,11 +56,6 @@
     <module name="JavadocMethod">
       <property name="scope" value="private"/>
       <property name="allowMissingParamTags" value="false"/>
-      <property name="allowMissingThrowsTags" value="false"/>
-      <property name="allowMissingReturnTag" value="false"/>
-      <property name="tokens" value="METHOD_DEF"/>
-      <property name="allowUndeclaredRTE" value="true"/>
-      <property name="allowThrowsTagsForSubclasses" value="true"/>
 
     </module>
 
