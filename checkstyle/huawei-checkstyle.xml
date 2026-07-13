@@ -4,7 +4,6 @@
 
 <!-- 指定检查的类和方法命名规则 -->
 <module name="Checker">
-
   <property name="charset" value="UTF-8"/>
   <property name="severity" value="warning"/>
 
