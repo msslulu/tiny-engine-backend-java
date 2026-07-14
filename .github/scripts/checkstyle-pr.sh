@@ -199,8 +199,9 @@ if [ -n "$GITHUB_STEP_SUMMARY" ]; then
         echo "| 扫描文件 | **$(echo "$CHANGED_FILES" | wc -l)** 个变更 Java 文件 |"
         echo "| 检查范围 | 仅新增或修改的行 |"
         echo ""
-        echo "📄 [下载完整报告（所有文件）](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
-        echo "📄 [下载过滤后报告（仅新增行）](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+        # 使用环境变量构建链接
+        echo "📄 [下载完整报告（所有文件）](${GH_SERVER_URL}/${GH_REPOSITORY}/actions/runs/${GH_RUN_ID})"
+        echo "📄 [下载过滤后报告（仅新增行）](${GH_SERVER_URL}/${GH_REPOSITORY}/actions/runs/${GH_RUN_ID})"
     } >> "$GITHUB_STEP_SUMMARY"
     echo "✅ Step Summary 已更新"
 fi
