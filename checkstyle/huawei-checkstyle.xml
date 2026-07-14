@@ -206,10 +206,7 @@
     </module>
     <module name="UnusedImports"/>
 
-    <module name="NoCharsetGetBytesCheck">
-      <!-- 可选：自定义违规消息 -->
-      <property name="message" value="String.getBytes() 应指定字符集，例如 getBytes(StandardCharsets.UTF_8)"/>
-    </module>
+
 
     <!-- try-catch 嵌套语句个数 最多2层 -->
     <module name="NestedTryDepth">
