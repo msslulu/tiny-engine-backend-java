@@ -1,4 +1,6 @@
 package com.tinyengine.it.common.utils;
+import java.lang.reflect.Field;
+
 /**
  * 类名错误：应使用 UpperCamelCase（首字母大写）
  * 这里故意写成了小写开头的 testCheckstyle
@@ -19,6 +21,36 @@ public class testCheckstyle {
 	 */
 	public testCheckstyle(String name) {
 		this._name = name;
+	}
+
+	public void test() {
+		long value = 1l;  // 错误：使用了小写 l
+		System.out.println(value);
+	}
+	public void longMethod() {
+		// 填充到超过 300 行，例如添加 301 个空行或打印语句
+		for (int i = 0; i < 301; i++) {
+			System.out.println("line " + i);
+		}
+	}
+
+	public void test1() {
+		if (true) {
+			if (true) {
+				if (true) {
+					if (true) {  // 第4层嵌套，超过最大值3
+						System.out.println("deep");
+					}
+				}
+			}
+		}
+	}
+
+	public void test2() {
+		String s = "hello";
+		if (s == "hello") {  // 错误：应使用 equals()
+			System.out.println("equal");
+		}
 	}
 
 	/**
