@@ -46,5 +46,5 @@ jobs:
         with:
           name: checkstyle-report
           path: | 
-            */target/checkstyle-result.xml
-            */target/site/checkstyle.html
+            base/target/checkstyle-result.xml
+            base/target/site/checkstyle.html
