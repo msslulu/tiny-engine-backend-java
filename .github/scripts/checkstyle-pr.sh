@@ -49,7 +49,6 @@ echo "🚀 执行 Checkstyle 扫描（完整文件）..."
 set +e
 mvn checkstyle:check \
     -Dcheckstyle.includes="$FILES_LIST" \
-    -Dcheckstyle.excludes="**/test/**/*.java" \
     -Dcheckstyle.violationSeverity=warning
 MVN_EXIT=$?
 set -e
