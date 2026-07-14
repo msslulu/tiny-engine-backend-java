@@ -39,6 +39,14 @@ jobs:
         env:
           GITHUB_BASE_REF: ${{ github.base_ref }}
 
+      - name: Debug - list all checkstyle reports
+        run: |
+          echo "当前工作目录: $(pwd)"
+          echo "=== 列出所有 target 目录 ==="
+          find . -type d -name "target" -exec echo "目录: {}" \; -exec ls -la {}/ \;
+          echo "=== 查找 checkstyle 文件 ==="
+          find . -name "checkstyle*.xml" -o -name "checkstyle*.html" | while read f; do echo "找到: $f"; done
+
       # 如果检查失败，仍然上传报告供查看
       - name: Upload Checkstyle report
         if: always()  # 即使失败也上传报告
