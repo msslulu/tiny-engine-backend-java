@@ -58,5 +58,4 @@ jobs:
           path: | 
             **/target/checkstyle-result.xml
             **/target/site/checkstyle.html
-
           if-no-files-found: warn
