@@ -79,14 +79,14 @@ echo "🚀 执行 Checkstyle 扫描（生成完整报告）..."
 FILES_LIST=$(echo "$CHANGED_FILES" | tr '\n' ',' | sed 's/,$//')
 
 set +e
-mvn checkstyle:checkstyle \
+mvn checkstyle:check \
     -Dcheckstyle.includes="$FILES_LIST" \
     -Dcheckstyle.excludes="**/test/**/*.java" \
     -Dcheckstyle.violationSeverity=warning
 MVN_EXIT=$?
 set -e
 
-REPORT_FILE="target/checkstyle-result.xml"
+REPORT_FILE="base/target/checkstyle-result.xml"
 if [ ! -f "$REPORT_FILE" ]; then
     echo "❌ 未生成 Checkstyle 报告，请检查 Maven 配置。"
     exit 0
