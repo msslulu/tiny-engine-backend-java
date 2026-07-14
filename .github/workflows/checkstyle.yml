@@ -57,5 +57,6 @@ jobs:
           name: checkstyle-report
           path: | 
             **/target/checkstyle-result.xml
-            **/target/site
+            **/target/site/checkstyle.html
+
           if-no-files-found: warn
