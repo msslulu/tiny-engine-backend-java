@@ -204,7 +204,7 @@
     <module name="NestedIfDepth">
       <property name="max" value="3"/>
     </module>
-    <module name="UnusedImports"/>
+    <module name="com.puppycrawl.tools.checkstyle.checks.imports.UnusedImportsCheck"/>
 
 
 

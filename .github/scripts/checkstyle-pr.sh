@@ -46,6 +46,7 @@ FILES_LIST=$(echo "$CHANGED_FILES" | tr '\n' ',' | sed 's/,$//')
 
 # 4. 执行 Checkstyle 扫描（生成完整报告）
 echo "🚀 执行 Checkstyle 扫描（完整文件）..."
+echo "FILES_LIST: $FILES_LIST"
 set +e
 mvn checkstyle:check \
     -Dcheckstyle.includes="$FILES_LIST" \
