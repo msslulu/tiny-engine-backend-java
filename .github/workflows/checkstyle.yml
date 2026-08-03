@@ -49,10 +49,13 @@ jobs:
           echo "=== 查找 checkstyle 文件 ==="
           find . -name "checkstyle*.xml" -o -name "checkstyle*.html" | while read f; do echo "找到: $f"; done
 
-      - name: Debug Checkstyle config
+      - name: Debug - Check HTML existence
         run: |
-          cd base
-          mvn checkstyle:check -X | grep -A 10 "Loading checkstyle"
+          echo "Searching for checkstyle.html:"
+          find . -name "checkstyle.html" -type f
+          echo "Also check site directory:"
+          ls -la base/target/site/ || echo "base/target/site not found"
+
       # 如果检查失败，仍然上传报告供查看
       - name: Upload Checkstyle report
         if: always()  # 即使失败也上传报告
