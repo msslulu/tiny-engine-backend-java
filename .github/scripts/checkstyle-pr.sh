@@ -54,12 +54,6 @@ mvn -pl base checkstyle:check \
 MVN_EXIT=$?
 set -e
 
-# 额外生成 HTML 报告（不受违规影响，始终执行）
-echo "📄 生成 HTML 报告..."
-mvn -pl base checkstyle:checkstyle \
-    -Dcheckstyle.config.location=checkstyle/huawei-checkstyle.xml \
-    -Dcheckstyle.outputFormat=html \
-    -Dcheckstyle.violationSeverity=warning
 
 # 5. 确定报告路径（根据项目结构调整）
 REPORT_FILE="base/target/checkstyle-result.xml"
