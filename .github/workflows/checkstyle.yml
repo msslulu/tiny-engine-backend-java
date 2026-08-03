@@ -54,7 +54,7 @@ jobs:
           echo "Searching for checkstyle.html:"
           find . -name "checkstyle.html" -type f
           echo "Also check site directory:"
-          ls -la base/target/site/ || echo "base/target/site not found"
+          ls -la base/target/reports/ || echo "base/target/reports not found"
 
       # 如果检查失败，仍然上传报告供查看
       - name: Upload Checkstyle report
@@ -64,5 +64,6 @@ jobs:
           name: checkstyle-report
           path: | 
             **/target/checkstyle-result.xml
+            **/target/checkstyle-checker.xml
             **/target/reports/
           if-no-files-found: warn
