@@ -25,10 +25,7 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-      - name: Debug Checkstyle config
-        run: |
-          cd base
-          mvn checkstyle:check -X | grep -A 10 "Loading checkstyle"
+
       # 缓存 Maven 依赖，加速构建
       - name: Cache Maven dependencies
         uses: actions/cache@v5
@@ -52,6 +49,10 @@ jobs:
           echo "=== 查找 checkstyle 文件 ==="
           find . -name "checkstyle*.xml" -o -name "checkstyle*.html" | while read f; do echo "找到: $f"; done
 
+      - name: Debug Checkstyle config
+        run: |
+          cd base
+          mvn checkstyle:check -X | grep -A 10 "Loading checkstyle"
       # 如果检查失败，仍然上传报告供查看
       - name: Upload Checkstyle report
         if: always()  # 即使失败也上传报告
