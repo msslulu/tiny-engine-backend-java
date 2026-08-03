@@ -49,6 +49,7 @@ echo "🚀 执行 Checkstyle 扫描（完整文件）..."
 echo "FILES_LIST: $FILES_LIST"
 set +e
 mvn checkstyle:check \
+    -Dcheckstyle.config.location=checkstyle/huawei-checkstyle.xml \
     -Dcheckstyle.includes="$FILES_LIST" \
     -Dcheckstyle.violationSeverity=warning
 MVN_EXIT=$?

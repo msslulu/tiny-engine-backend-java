@@ -225,4 +225,27 @@
     <property name="max" value="120"/>
     <property name="ignorePattern" value="^package|^import"/>
   </module>
+
+  <module name="WhitespaceAround"/>
+  <module name="WhitespaceAfter"/>
+  <module name="NoWhitespaceBefore"/>
+  <module name="Indentation">
+    <property name="basicOffset" value="4"/>
+    <property name="braceAdjustment" value="0"/>
+    <property name="caseIndent" value="4"/>
+    <property name="lineWrappingIndentation" value="8"/>
+  </module>
+
+  <!-- Miscellaneous -->
+  <module name="TodoComment"/>
+  <module name="UpperEll"/>
+  <module name="MagicNumber">
+    <property name="ignoreNumbers" value="-1,0,1,2"/>
+  </module>
+  <module name="IllegalInstantiation">
+    <property name="classes" value="java.lang.Boolean,java.lang.Integer"/>
+  </module>
+  <module name="StringLiteralEquality"/>
+  <module name="MultipleVariableDeclarations"/>
+  <module name="ArrayTypeStyle"/>
 </module>
