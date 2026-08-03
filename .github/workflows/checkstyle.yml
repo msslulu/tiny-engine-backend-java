@@ -53,7 +53,7 @@ jobs:
         run: |
           echo "Searching for checkstyle.html:"
           find . -name "checkstyle.html" -type f
-          echo "Also check site directory:"
+          echo "Also check reports directory:"
           ls -la base/target/reports/ || echo "base/target/reports not found"
 
       # 如果检查失败，仍然上传报告供查看
