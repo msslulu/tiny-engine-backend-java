@@ -25,7 +25,10 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-
+      - name: Debug Checkstyle config
+        run: |
+          cd base
+          mvn checkstyle:check -X | grep -A 10 "Loading checkstyle"
       # 缓存 Maven 依赖，加速构建
       - name: Cache Maven dependencies
         uses: actions/cache@v5

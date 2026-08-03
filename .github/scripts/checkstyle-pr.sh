@@ -48,9 +48,8 @@ FILES_LIST=$(echo "$CHANGED_FILES" | tr '\n' ',' | sed 's/,$//')
 echo "🚀 执行 Checkstyle 扫描（完整文件）..."
 echo "FILES_LIST: $FILES_LIST"
 set +e
-mvn checkstyle:check \
+mvn -pl base checkstyle:check \
     -Dcheckstyle.config.location=checkstyle/huawei-checkstyle.xml \
-    -Dcheckstyle.includes="$FILES_LIST" \
     -Dcheckstyle.violationSeverity=warning
 MVN_EXIT=$?
 set -e
