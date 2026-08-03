@@ -241,7 +241,7 @@
                 <artifactId>maven-checkstyle-plugin</artifactId>
                 <version>3.6.0</version>
                 <configuration>
-                    <!-- 指定华为Java编码规范的配置文件 -->
+                    <!-- java编码规范的配置文件 -->
                     <configLocation>./checkstyle/huawei-checkstyle.xml</configLocation>
                     <!-- 检查失败时构建失败（阻止CI通过） -->
                     <failOnViolation>false</failOnViolation>
@@ -258,6 +258,54 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+
+            <!-- PMD Plugin Configuration -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-pmd-plugin</artifactId>
+                <version>3.21.0</version> <!-- Use the latest stable version -->
+                <configuration>
+                    <rulesets>
+                        <ruleset>category/java/bestpractices.xml</ruleset>
+                        <ruleset>category/java/codestyle.xml</ruleset>
+                        <ruleset>category/java/design.xml</ruleset>
+                        <ruleset>category/java/errorprone.xml</ruleset>
+                        <ruleset>category/java/performance.xml</ruleset>
+                        <ruleset>category/java/security.xml</ruleset>
+                    </rulesets>
+                    <failOnViolation>true</failOnViolation> <!-- Fail build on violations -->
+                    <linkXRef>false</linkXRef> <!-- Disable cross-referencing -->
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>pmd-check</id>
+                        <phase>verify</phase> <!-- Changed to verify phase -->
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>com.github.spotbugs</groupId>
+                <artifactId>spotbugs-maven-plugin</artifactId>
+                <version>4.7.3.0</version> <!-- Use the latest stable version -->
+                <executions>
+                    <execution>
+                        <id>spotbugs-check</id>
+                        <phase>verify</phase> <!-- Run during the verify phase -->
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <effort>Max</effort> <!-- Analysis effort level: Min, Default, or Max -->
+                    <threshold>Low</threshold> <!-- Bug severity threshold: High, Default, or Low -->
+                    <failOnError>true</failOnError> <!-- Fail build on SpotBugs errors -->
+                </configuration>
             </plugin>
         </plugins>
     </build>
