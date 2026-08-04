@@ -38,11 +38,8 @@ jobs:
           PMD_VERSION="6.55.0"
           curl -L "https://github.com/pmd/pmd/releases/download/pmd_releases%2F${PMD_VERSION}/pmd-bin-${PMD_VERSION}.zip" -o pmd.zip
           unzip -q pmd.zip
-          # 解压后目录为 pmd-bin-6.55.0，重命名为 pmd
           mv pmd-bin-${PMD_VERSION} pmd
           export PATH="$PWD/pmd/bin:$PATH"
-
-          # 调试：检查 pmd 是否可执行
           which pmd || echo "pmd not found"
           ls -la pmd/bin/
 
@@ -53,7 +50,6 @@ jobs:
             -R rulesets/java/quickstart.xml \
             -r pmd-report.sarif
 
-          # 提取违规数量
           if [ -f pmd-report.sarif ]; then
             violations=$(jq '.runs[0].results | length' pmd-report.sarif)
           else
