@@ -40,8 +40,6 @@ jobs:
           rulesets: 'rulesets/java/quickstart.xml'
           sourcePath: 'base/src/main/java'
           analyzeModifiedFilesOnly: false
-          outputSarif: false
-          uploadSarif: false
           uploadSarifReport: false
 
       - name: Upload SARIF file
