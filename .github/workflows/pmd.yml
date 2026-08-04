@@ -32,26 +32,29 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-      - name: Run PMD
+      - name: Run PMD on both modules
         id: pmd
-        uses: pmd/pmd-github-action@v2
-        with:
-          version: '6.55.0'
-          rulesets: 'rulesets/java/quickstart.xml'
-          sourcePath: 'base/src/main/java'
-          analyzeModifiedFilesOnly: true
-          uploadSarifReport: false
-          failOnViolation: true
-      - name: Run PMD
-        id: pmd2
-        uses: pmd/pmd-github-action@v2
-        with:
-          version: '6.55.0'
-          rulesets: 'rulesets/java/quickstart.xml'
-          sourcePath: 'app/src/main/java'
-          analyzeModifiedFilesOnly: true
-          uploadSarifReport: false
-          failOnViolation: true
+        run: |
+          PMD_VERSION="6.55.0"
+          curl -L "https://github.com/pmd/pmd/releases/download/pmd_releases%2F${PMD_VERSION}/pmd-bin-${PMD_VERSION}.zip" -o pmd.zip
+          unzip -q pmd.zip -d pmd
+          export PATH="$PWD/pmd/bin:$PATH"
+
+          pmd check --no-cache \
+            -d base/src/main/java \
+            -d app/src/main/java \
+            -f sarif \
+            -R rulesets/java/quickstart.xml \
+            -r pmd-report.sarif
+
+          # 提取违规数量
+          if [ -f pmd-report.sarif ]; then
+            violations=$(jq '.runs[0].results | length' pmd-report.sarif)
+          else
+            violations=0
+          fi
+          echo "violations=$violations" >> $GITHUB_OUTPUT
+      
 
       - name: Install sarif-tools and convert to HTML
         run: |
