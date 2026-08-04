@@ -37,7 +37,9 @@ jobs:
         run: |
           PMD_VERSION="6.55.0"
           curl -L "https://github.com/pmd/pmd/releases/download/pmd_releases%2F${PMD_VERSION}/pmd-bin-${PMD_VERSION}.zip" -o pmd.zip
-          unzip -q pmd.zip -d pmd
+          unzip -q pmd.zip -d .
+          # 重命名文件夹以简化路径
+          mv pmd-bin-${PMD_VERSION} pmd
           export PATH="$PWD/pmd/bin:$PATH"
 
           pmd check --no-cache \
