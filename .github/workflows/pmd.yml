@@ -52,3 +52,16 @@ jobs:
         with:
           name: pmd-sarif-report        # 给工件起一个有意义的名字
           path: pmd-report.sarif
+
+      - name: Convert SARIF to HTML
+        uses: b-zurg/sarif-converter@v1
+        with:
+          sarif: pmd-report.sarif      # 输入的 SARIF 文件路径
+          output: pmd-report.html      # 输出的 HTML 文件路径
+          type: html                   # 输出格式，默认为 html
+
+      - name: Upload HTML report
+        uses: actions/upload-artifact@v4
+        with:
+          name: pmd-html-report
+          path: pmd-report.html
