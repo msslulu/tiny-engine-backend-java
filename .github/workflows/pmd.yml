@@ -48,7 +48,7 @@ jobs:
             -f sarif \
             -R rulesets/java/quickstart.xml \
             -r pmd-report.sarif \
-            --no-fail-on-violation   # 添加此行
+            -failOnViolation false
 
           if [ -f pmd-report.sarif ]; then
             violations=$(jq '.runs[0].results | length' pmd-report.sarif)
