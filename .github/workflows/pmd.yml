@@ -41,6 +41,7 @@ jobs:
           sourcePath: 'base/src/main/java'
           analyzeModifiedFilesOnly: true
           uploadSarifReport: false
+          failOnViolation: true
 
       - name: Install sarif-tools and convert to HTML
         run: |
