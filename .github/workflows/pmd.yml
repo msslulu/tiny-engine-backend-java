@@ -42,6 +42,9 @@ jobs:
           analyzeModifiedFilesOnly: false
           uploadSarifReport: false
 
+      - name: Convert SARIF to HTML
+        run: npx sarif-explorer --input pmd-report.sarif --output pmd-report.html
+
       - name: Upload SARIF file
         uses: github/codeql-action/upload-sarif@v3
         with:
@@ -52,13 +55,6 @@ jobs:
         with:
           name: pmd-sarif-report        # 给工件起一个有意义的名字
           path: pmd-report.sarif
-
-      - name: Convert SARIF to HTML
-        uses: b-zurg/sarif-converter@v1
-        with:
-          sarif: pmd-report.sarif      # 输入的 SARIF 文件路径
-          output: pmd-report.html      # 输出的 HTML 文件路径
-          type: html                   # 输出格式，默认为 html
 
       - name: Upload HTML report
         uses: actions/upload-artifact@v4
