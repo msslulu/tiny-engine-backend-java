@@ -43,7 +43,7 @@ jobs:
           uploadSarifReport: false
           failOnViolation: true
       - name: Run PMD
-        id: pmd
+        id: pmd2
         uses: pmd/pmd-github-action@v2
         with:
           version: '6.55.0'
