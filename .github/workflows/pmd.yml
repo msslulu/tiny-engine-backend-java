@@ -39,11 +39,10 @@ jobs:
           curl -L "https://github.com/pmd/pmd/releases/download/pmd_releases%2F${PMD_VERSION}/pmd-bin-${PMD_VERSION}.zip" -o pmd.zip
           unzip -q pmd.zip
           mv pmd-bin-${PMD_VERSION} pmd
-          export PATH="$PWD/pmd/bin:$PATH"
-          which pmd || echo "pmd not found"
-          ls -la pmd/bin/
+          PMD_CMD="$PWD/pmd/bin/run.sh"
+          chmod +x "$PMD_CMD"
 
-          pmd check --no-cache \
+          "$PMD_CMD" check --no-cache \
             -d base/src/main/java \
             -d app/src/main/java \
             -f sarif \
