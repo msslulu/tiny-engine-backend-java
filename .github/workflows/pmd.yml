@@ -64,3 +64,13 @@ jobs:
         with:
           name: pmd-html-report
           path: pmd-report.html
+
+      - name: Check PMD violations
+        run: |
+          if [[ ${{ steps.pmd.outputs.violations }} -eq 0 ]]; then
+            echo "✅ PMD 未发现代码问题，构建通过。"
+            exit 0
+          else
+            echo "❌ PMD 发现 ${{ steps.pmd.outputs.violations }} 个代码问题，构建失败。"
+            exit 1
+          fi
