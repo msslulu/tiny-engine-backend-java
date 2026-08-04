@@ -42,7 +42,7 @@ jobs:
           PMD_CMD="$PWD/pmd/bin/run.sh"
           chmod +x "$PMD_CMD"
 
-          "$PMD_CMD" pmd check --no-cache \
+          "$PMD_CMD" pmd --no-cache \
             -d base/src/main/java \
             -d app/src/main/java \
             -f sarif \
