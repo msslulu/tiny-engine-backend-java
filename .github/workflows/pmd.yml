@@ -46,3 +46,9 @@ jobs:
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: pmd-report.sarif
+
+      - name: Upload SARIF file as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pmd-sarif-report        # 给工件起一个有意义的名字
+          path: pmd-report.sarif
