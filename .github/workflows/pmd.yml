@@ -41,6 +41,9 @@ jobs:
           sourcePath: 'base/src/main/java'
           analyzeModifiedFilesOnly: false
           outputSarif: false
+          uploadSarif: false
+          uploadSarifReport: false
+
       - name: Upload SARIF file
         uses: github/codeql-action/upload-sarif@v3
         with:
