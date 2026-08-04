@@ -107,4 +107,14 @@ if [ -n "$GITHUB_STEP_SUMMARY" ]; then
 fi
 
 # 8. 始终以成功状态退出
-exit 0
+# ================================================
+# 7. 根据违规数决定构建状态（拦截 PR）
+# ================================================
+if [ $VIOLATIONS -eq 0 ]; then
+    echo "✅ 检查通过，构建成功。"
+    exit 0
+else
+    echo "❌ 发现 $VIOLATIONS 个违规，构建失败。"
+    # 为了让 GitHub Actions 标记为失败，退出码设为 1
+    exit 1
+fi
