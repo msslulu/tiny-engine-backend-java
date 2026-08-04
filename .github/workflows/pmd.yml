@@ -40,6 +40,7 @@ jobs:
           rulesets: 'rulesets/java/quickstart.xml'
           sourcePath: 'base/src/main/java'
           analyzeModifiedFilesOnly: false
+          outputSarif: false
       - name: Upload SARIF file
         uses: github/codeql-action/upload-sarif@v3
         with:
