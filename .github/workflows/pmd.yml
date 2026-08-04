@@ -39,7 +39,7 @@ jobs:
           version: '6.55.0'
           rulesets: 'rulesets/java/quickstart.xml'
           sourcePath: 'base/src/main/java'
-          analyzeModifiedFilesOnly: false
+          analyzeModifiedFilesOnly: true
           uploadSarifReport: false
 
       - name: Install sarif-tools and convert to HTML
