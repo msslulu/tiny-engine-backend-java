@@ -71,7 +71,7 @@ jobs:
 
           # 6. 扫描变更的 Java 文件
           "$PMD_CMD" pmd --no-cache \
-              -filelist changed-files.txt \
+              --file-list changed-files.txt \
               -f sarif \
               -R rulesets/java/quickstart.xml \
               -r pmd-report.sarif || true
