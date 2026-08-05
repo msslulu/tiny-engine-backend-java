@@ -49,6 +49,15 @@ jobs:
 
           # 3. 获取变更的 Java 文件（比较当前 HEAD 与目标分支）
           CHANGED_FILES=$(git diff --name-only "origin/$BASE_BRANCH" HEAD | grep '\.java$' || true)
+          
+          echo "📝 变更的 Java 文件列表："
+          if [ -n "$CHANGED_FILES" ]; then
+          echo "$CHANGED_FILES"
+          else
+          echo "（无）"
+          fi
+          echo "----------------------------------------"
+          
           if [ -z "$CHANGED_FILES" ]; then
             echo "No Java files changed, skipping PMD."
             echo "violations=0" >> $GITHUB_OUTPUT
