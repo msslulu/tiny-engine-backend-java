@@ -26,13 +26,14 @@ jobs:
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0   # 必须拉取完整历史，才能比较分支差异
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '17'
           distribution: 'temurin'
-          fetch-depth: 0 # Fetch all history for all branches and tags
       - name: Run PMD on changed Java files only
         id: pmd
         run: |
@@ -108,7 +109,7 @@ jobs:
           sarif_file: pmd-report.sarif
 
       - name: Upload SARIF file as artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: pmd-sarif-report        # 给工件起一个有意义的名字
           path: pmd-report.sarif
