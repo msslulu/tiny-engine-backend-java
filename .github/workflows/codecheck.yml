@@ -34,7 +34,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
-      # ==================== validate 阶段：Checkstyle（增量检查，允许失败） ====================
       - name: [validate] Run Checkstyle
         id: checkstyle
         continue-on-error: true   # 允许失败，不影响后续编译
