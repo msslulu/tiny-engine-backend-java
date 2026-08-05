@@ -1,0 +1,83 @@
+name: Code Quality Checks
+
+on:
+  push:
+    branches:
+      - develop
+  pull_request:
+    branches:
+      - develop
+
+jobs:
+  static-analysis:
+    runs-on: ubuntu-24.04
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Cache Maven dependencies
+        uses: actions/cache@v5
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      # ==================== validate 阶段：Checkstyle（增量检查，允许失败） ====================
+      - name: [validate] Run Checkstyle
+        id: checkstyle
+        continue-on-error: true   # 允许失败，不影响后续编译
+        run: bash .github/scripts/checkstyle-pr.sh
+        env:
+          GITHUB_BASE_REF: ${{ github.base_ref }}
+
+      # ==================== 编译（供 PMD 和 SpotBugs 使用） ====================
+      - name: Compile project
+        run: mvn compile -DskipTests
+
+      # ==================== verify 阶段：PMD（直接失败，按你的 pom 配置） ====================
+      - name: [verify] Run PMD (including CPD)
+        id: pmd
+        # 不设置 continue-on-error，因为 failOnViolation=true 时，mvn 会返回非零，我们希望构建失败
+        run: mvn pmd:check pmd:cpd-check
+
+      # ==================== verify 阶段：SpotBugs（如果 PMD 通过则执行） ====================
+      - name: [verify] Run SpotBugs
+        id: spotbugs
+        # 如果你的 SpotBugs 也配置了 failOnError=true，这里也建议不加 continue-on-error
+        # 否则可保留 continue-on-error: true
+        run: mvn spotbugs:check
+
+      # ==================== 调试：列出所有报告（仅当执行成功时） ====================
+      - name: Debug - list all reports
+        if: always()   # 即使失败也尝试列出已生成的文件
+        run: |
+          echo "当前工作目录: $(pwd)"
+          echo "=== 查找所有检查报告 ==="
+          find . \( -name "checkstyle-result.xml" -o -name "pmd.xml" -o -name "cpd.xml" -o -name "spotbugsXml.xml" \) -type f | while read f; do echo "找到: $f"; done
+
+      # ==================== 上传所有报告（无论成功与否） ====================
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: quality-reports
+          path: |
+            **/target/checkstyle-result.xml
+            **/target/checkstyle-checker.xml
+            **/target/reports/
+            **/target/pmd.xml
+            **/target/cpd.xml
+            **/target/spotbugsXml.xml
+          if-no-files-found: warn
