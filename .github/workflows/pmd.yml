@@ -32,24 +32,36 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
+          fetch-depth: 0 # Fetch all history for all branches and tags
       - name: Run PMD on changed Java files only
         id: pmd
         run: |
-          # 获取变更的 Java 文件
-          CHANGED_FILES=$(git diff --name-only origin/develop HEAD | grep '\.java$' || true)
+          # 1. 确定目标分支（从环境变量获取）
+          if [ -n "$GITHUB_BASE_REF" ]; then
+            BASE_BRANCH="$GITHUB_BASE_REF"
+          else
+            # 如果是 push 事件，回退到 main 或 develop
+            BASE_BRANCH="develop"   # 或 main，根据项目调整
+          fi
+
+          # 2. 确保目标分支的远程引用存在
+          git fetch origin "$BASE_BRANCH" --depth=1 || true
+
+          # 3. 获取变更的 Java 文件（比较当前 HEAD 与目标分支）
+          CHANGED_FILES=$(git diff --name-only "origin/$BASE_BRANCH" HEAD | grep '\.java$' || true)
           if [ -z "$CHANGED_FILES" ]; then
             echo "No Java files changed, skipping PMD."
             echo "violations=0" >> $GITHUB_OUTPUT
             exit 0
           fi
 
-          # 生成文件列表
+          # 4. 生成文件列表（绝对路径）
           > changed-files.txt
           for file in $CHANGED_FILES; do
             echo "$PWD/$file" >> changed-files.txt
           done
 
-          # 下载 PMD
+          # 5. 下载 PMD
           PMD_VERSION="6.55.0"
           curl -L "https://github.com/pmd/pmd/releases/download/pmd_releases%2F${PMD_VERSION}/pmd-bin-${PMD_VERSION}.zip" -o pmd.zip
           unzip -q pmd.zip
@@ -57,20 +69,23 @@ jobs:
           PMD_CMD="$PWD/pmd/bin/run.sh"
           chmod +x "$PMD_CMD"
 
-          # 扫描变更文件
+          # 6. 扫描变更的 Java 文件
           "$PMD_CMD" pmd --no-cache \
               -filelist changed-files.txt \
               -f sarif \
               -R rulesets/java/quickstart.xml \
               -r pmd-report.sarif || true
 
-          # 统计违规
+          # 7. 统计违规数
           if [ -f pmd-report.sarif ]; then
             violations=$(jq '.runs[0].results | length' pmd-report.sarif)
           else
             violations=0
           fi
           echo "violations=$violations" >> $GITHUB_OUTPUT
+
+          # 清理
+          rm -f changed-files.txt
       
 
       - name: Install sarif-tools and convert to HTML
