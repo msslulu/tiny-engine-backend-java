@@ -32,9 +32,24 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-      - name: Run PMD on both modules
+      - name: Run PMD on changed Java files only
         id: pmd
         run: |
+          # 获取变更的 Java 文件
+          CHANGED_FILES=$(git diff --name-only origin/develop HEAD | grep '\.java$' || true)
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "No Java files changed, skipping PMD."
+            echo "violations=0" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # 生成文件列表
+          > changed-files.txt
+          for file in $CHANGED_FILES; do
+            echo "$PWD/$file" >> changed-files.txt
+          done
+
+          # 下载 PMD
           PMD_VERSION="6.55.0"
           curl -L "https://github.com/pmd/pmd/releases/download/pmd_releases%2F${PMD_VERSION}/pmd-bin-${PMD_VERSION}.zip" -o pmd.zip
           unzip -q pmd.zip
@@ -42,13 +57,14 @@ jobs:
           PMD_CMD="$PWD/pmd/bin/run.sh"
           chmod +x "$PMD_CMD"
 
+          # 扫描变更文件
           "$PMD_CMD" pmd --no-cache \
-            -d base/src/main/java \
-            -d app/src/main/java \
-            -f sarif \
-            -R rulesets/java/quickstart.xml \
-            -r pmd-report.sarif || true 
+              -filelist changed-files.txt \
+              -f sarif \
+              -R rulesets/java/quickstart.xml \
+              -r pmd-report.sarif || true
 
+          # 统计违规
           if [ -f pmd-report.sarif ]; then
             violations=$(jq '.runs[0].results | length' pmd-report.sarif)
           else
