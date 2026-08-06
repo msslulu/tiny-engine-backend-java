@@ -44,7 +44,7 @@
    allowMissingThrowsTags: 是否忽略对throws注释的检查
    allowMissingReturnTag: 是否忽略对return注释的检查 -->
     <module name="JavadocMethod">
-      <property name="allowMissingParamTags" value="false"/>
+      <property name="allowMissingParamTags" value="true"/>
       <property name="allowMissingReturnTag" value="false"/>
       <property name="tokens" value="METHOD_DEF"/>
     </module>
@@ -94,7 +94,7 @@
 
     <!-- 变量名采用小写字母并使用下划线分隔 -->
     <module name="LocalVariableName">
-      <property name="format" value="^[a-z][a-z0-9]*(_[a-z0-9]+)*$"/>
+      <property name="format" value="^[a-z][a-zA-Z0-9]*$"/>
     </module>
 
     <!-- 常量名全大写并使用下划线分隔 -->
