@@ -1,0 +1,131 @@
+# This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation.
+
+name: pmd
+
+on:
+  push:
+    branches: [ "develop" ]
+  pull_request:
+    branches: [ "develop" ]
+  schedule:
+    - cron: '41 12 * * 3'
+
+permissions:
+  contents: read
+
+jobs:
+  pmd-code-scan:
+    permissions:
+      contents: read # for actions/checkout to fetch code
+      security-events: write # for github/codeql-action/upload-sarif to upload SARIF results
+      actions: read # only required for a private repository by github/codeql-action/upload-sarif to get the Action run status
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0   # 必须拉取完整历史，才能比较分支差异
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      - name: Run PMD on changed Java files only
+        id: pmd
+        run: |
+          # 1. 确定目标分支（从环境变量获取）
+          if [ -n "$GITHUB_BASE_REF" ]; then
+            BASE_BRANCH="$GITHUB_BASE_REF"
+          else
+            # 如果是 push 事件，回退到 main 或 develop
+            BASE_BRANCH="develop"   # 或 main，根据项目调整
+          fi
+
+          # 2. 确保目标分支的远程引用存在
+          git fetch origin "$BASE_BRANCH" --depth=1 || true
+
+          # 3. 获取变更的 Java 文件（比较当前 HEAD 与目标分支）
+          CHANGED_FILES=$(git diff --name-only "origin/$BASE_BRANCH" HEAD | grep '\.java$' || true)
+          
+          echo "📝 变更的 Java 文件列表："
+          if [ -n "$CHANGED_FILES" ]; then
+          echo "$CHANGED_FILES"
+          else
+          echo "（无）"
+          fi
+          echo "----------------------------------------"
+          
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "No Java files changed, skipping PMD."
+            echo "violations=0" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # 4. 生成文件列表（绝对路径）
+          > changed-files.txt
+          for file in $CHANGED_FILES; do
+            echo "$PWD/$file" >> changed-files.txt
+          done
+
+          # 5. 下载 PMD
+          PMD_VERSION="6.55.0"
+          curl -L "https://github.com/pmd/pmd/releases/download/pmd_releases%2F${PMD_VERSION}/pmd-bin-${PMD_VERSION}.zip" -o pmd.zip
+          unzip -q pmd.zip
+          mv pmd-bin-${PMD_VERSION} pmd
+          PMD_CMD="$PWD/pmd/bin/run.sh"
+          chmod +x "$PMD_CMD"
+
+          # 6. 扫描变更的 Java 文件
+          "$PMD_CMD" pmd --no-cache \
+              --file-list changed-files.txt \
+              -f sarif \
+              -R rulesets/java/quickstart.xml \
+              -r pmd-report.sarif || true
+
+          # 7. 统计违规数
+          if [ -f pmd-report.sarif ]; then
+            violations=$(jq '.runs[0].results | length' pmd-report.sarif)
+          else
+            violations=0
+          fi
+          echo "violations=$violations" >> $GITHUB_OUTPUT
+
+          # 清理
+          rm -f changed-files.txt
+      
+
+      - name: Install sarif-tools and convert to HTML
+        run: |
+          pip install sarif-tools
+          sarif html pmd-report.sarif --output pmd-report.html
+
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: pmd-report.sarif
+
+      - name: Upload SARIF file as artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: pmd-sarif-report        # 给工件起一个有意义的名字
+          path: pmd-report.sarif
+
+      - name: Upload HTML report
+        uses: actions/upload-artifact@v7
+        with:
+          name: pmd-html-report
+          path: pmd-report.html
+
+      - name: Check PMD violations
+        run: |
+          if [[ ${{ steps.pmd.outputs.violations }} -eq 0 ]]; then
+            echo "✅ PMD 未发现代码问题，构建通过。"
+            exit 0
+          else
+            echo "❌ PMD 发现 ${{ steps.pmd.outputs.violations }} 个代码问题，构建失败。"
+            exit 1
+          fi
