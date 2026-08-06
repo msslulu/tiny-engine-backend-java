@@ -56,6 +56,75 @@ jobs:
           echo "Also check reports directory:"
           ls -la base/target/reports/ || echo "base/target/reports not found"
 
+      - name: Compile project
+        run:  mvn compile -DskipTests
+
+      - name: Run PMD (incremental)
+        id: pmd
+        continue-on-error: true
+        run: bash .github/scripts/pmd-pr.sh
+        env:
+          GITHUB_BASE_REF: ${{ github.base_ref }}
+
+      - name: Prepare SpotBugs onlyAnalyze list
+        run: bash .github/scripts/spotbugs-only-analyze.sh
+        env:
+          GITHUB_BASE_REF: ${{ github.base_ref }}
+
+      - name: Debug reports
+        if: always()
+        run: |
+          echo "Current directory: $(pwd)"
+          echo "=== Find all report files ==="
+          find . -type f \( -name "checkstyle-result.xml" -o -name "pmd.xml" -o -name "cpd.xml" -o -name "spotbugsXml.xml" \)
+          
+      - name: Summarize violations
+        id: summary
+        run: |
+          total=0
+          for report in $(find . -name "checkstyle-result.xml" -o -name "pmd.xml" -o -name "cpd.xml" -o -name "spotbugsXml.xml"); do
+            if [ -f "$report" ]; then
+              count=0
+              if [[ "$report" == *"spotbugsXml.xml" ]]; then
+                count=$(grep -c '<BugInstance' "$report" || true)
+              else
+                count=$(grep -c '<error' "$report" || true)
+              fi
+              total=$((total + count))
+              echo "  $report : $count violations"
+            fi
+          done
+          echo "total_violations=$total" >> $GITHUB_OUTPUT
+          echo "总违规数: $total"
+
+      - name: Fail if violations found
+        if: steps.summary.outputs.total_violations > 0
+        run: |
+          echo "❌ 发现 ${{ steps.summary.outputs.total_violations }} 个违规，构建失败。"
+          exit 1
+
+      - name: Install sarif-tools and convert to HTML
+        run: |
+          pip install sarif-tools
+          sarif html pmd-report.sarif --output pmd-report.html
+
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: pmd-report.sarif
+
+      - name: Upload SARIF file as artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: pmd-sarif-report        # 给工件起一个有意义的名字
+          path: pmd-report.sarif
+
+      - name: Upload HTML report
+        uses: actions/upload-artifact@v7
+        with:
+          name: pmd-html-report
+          path: pmd-report.html
+
       # 如果检查失败，仍然上传报告供查看
       - name: Upload Checkstyle report
         if: always()  # 即使失败也上传报告
@@ -66,5 +135,8 @@ jobs:
             **/target/checkstyle-result.xml
             **/target/checkstyle-checker.xml
             **/target/reports/
+            **/target/spotbugsXml.xml
+            **/target/spotbugs.html
+            **/target/pmd.xml
           if-no-files-found: warn
 

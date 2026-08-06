@@ -311,7 +311,7 @@
             <plugin>
                 <groupId>com.github.spotbugs</groupId>
                 <artifactId>spotbugs-maven-plugin</artifactId>
-                <version>4.7.3.0</version> <!-- Use the latest stable version -->
+                <version>4.7.3.1</version> <!-- Use the latest stable version -->
                 <executions>
                     <execution>
                         <id>spotbugs-check</id>
@@ -326,8 +326,12 @@
                     <threshold>Low</threshold> <!-- Bug severity threshold: High, Default, or Low -->
                     <failOnError>true</failOnError> <!-- Fail build on SpotBugs errors -->
                     <xmlOutput>true</xmlOutput>
+                    <htmlOutput>true</htmlOutput>
+                    <outputDirectory>${project.build.directory}/spotbugs-reports</outputDirectory>
+
                 </configuration>
             </plugin>
+
         </plugins>
     </build>
 </project>
