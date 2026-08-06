@@ -112,7 +112,7 @@ fi
 # ================================================
 if [ $VIOLATIONS -eq 0 ]; then
     echo "✅ 检查通过，构建成功。"
-    exit 0
+    exit 1
 else
     echo "❌ 发现 $VIOLATIONS 个违规，构建失败。"
     # 为了让 GitHub Actions 标记为失败，退出码设为 1
