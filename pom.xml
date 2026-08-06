@@ -248,6 +248,8 @@
                     <violationSeverity>warning</violationSeverity>
                     <!-- 输出格式 -->
                     <outputFileFormat>xml</outputFileFormat>
+                    <includes>**/*.java</includes>
+
                 </configuration>
                 <executions>
                     <execution>

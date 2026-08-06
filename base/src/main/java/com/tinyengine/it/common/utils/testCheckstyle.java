@@ -70,6 +70,7 @@ public class testCheckstyle {
 	 */
 	public void doSomething() {
 		// 方法体为空或简单，但缺少注释
+
 	}
 
 	/**
@@ -107,5 +108,10 @@ public class testCheckstyle {
 	public static final String ANOTHER_CONST;
 	static {
 		ANOTHER_CONST = "Init";
+	}
+
+	void test3(){
+		String json = "{\"key\":\"value\",\"number\":123}";
+		byte[] jsonBytes = json.getBytes();
 	}
 }
