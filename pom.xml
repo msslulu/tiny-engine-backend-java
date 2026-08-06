@@ -244,7 +244,7 @@
                     <!-- java编码规范的配置文件 -->
                     <configLocation>./checkstyle/huawei-checkstyle.xml</configLocation>
                     <!-- 检查失败时构建失败（阻止CI通过） -->
-                    <failOnViolation>false</failOnViolation>
+                    <failOnViolation>true</failOnViolation>
                     <violationSeverity>warning</violationSeverity>
                     <!-- 输出格式 -->
                     <outputFileFormat>xml</outputFileFormat>
