@@ -274,7 +274,7 @@
                         <ruleset>category/java/performance.xml</ruleset>
                         <ruleset>category/java/security.xml</ruleset>
                     </rulesets>
-                    <failOnViolation>false</failOnViolation> <!-- Fail build on violations -->
+                    <failOnViolation>true</failOnViolation> <!-- Fail build on violations -->
                     <linkXRef>false</linkXRef> <!-- Disable cross-referencing -->
                     <minimumTokens>100</minimumTokens>
                 </configuration>
@@ -286,7 +286,7 @@
                             <goal>check</goal>
                         </goals>
                         <configuration>
-                            <failOnViolation>false</failOnViolation>
+                            <failOnViolation>true</failOnViolation>
                         </configuration>
                             <!-- Fail build on violations -->
                     </execution>
@@ -297,7 +297,7 @@
                             <goal>cpd-check</goal>
                         </goals>
                         <configuration>
-                            <failOnViolation>false</failOnViolation>
+                            <failOnViolation>true</failOnViolation>
                         </configuration>
                     </execution>
                 </executions>
