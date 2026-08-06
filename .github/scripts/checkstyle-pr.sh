@@ -50,7 +50,6 @@ echo "FILES_LIST: $FILES_LIST"
 set +e
 mvn -pl base checkstyle:check \
     -Dcheckstyle.config.location=checkstyle/huawei-checkstyle.xml \
-    -Dcheckstyle.includes="**/testCheckstyle.java" \
     -Dcheckstyle.violationSeverity=warning
 MVN_EXIT=$?
 set -e
