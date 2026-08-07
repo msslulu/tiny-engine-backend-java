@@ -41,79 +41,124 @@ echo "📝 变更的 Java 文件："
 echo "$CHANGED_FILES"
 echo "----------------------------------------"
 
-# 3. 将文件列表转为逗号分隔
-FILES_LIST=$(echo "$CHANGED_FILES" | tr '\n' ',' | sed 's/,$//')
+# 按模块分组
+declare -A module_files
+for file in $CHANGED_FILES; do
+    module="${file%%/*}"
+    if [ -z "$module" ] || [ "$module" == "$file" ]; then
+        echo "⚠️ 忽略根目录文件: $file"
+        continue
+    fi
+    rel="${file#$module/}"
+    if [ -z "${module_files[$module]}" ]; then
+        module_files[$module]="$rel"
+    else
+        module_files[$module]="${module_files[$module]},$rel"
+    fi
+done
 
-# 4. 执行 Checkstyle 扫描（生成完整报告）
-echo "🚀 执行 Checkstyle 扫描（完整文件）..."
-echo "FILES_LIST: $FILES_LIST"
-set +e
-mvn -pl base checkstyle:check \
-    -Dcheckstyle.config.location=checkstyle/huawei-checkstyle.xml \
-    -Dcheckstyle.violationSeverity=warning
-MVN_EXIT=$?
-set -e
-
-# 额外生成 HTML 报告（不受违规影响，始终执行）
-echo "📄 生成 HTML 报告..."
-mvn -pl base checkstyle:checkstyle \
-    -Dcheckstyle.config.location=checkstyle/huawei-checkstyle.xml \
-    -Dcheckstyle.outputFormat=html \
-    -Dcheckstyle.violationSeverity=warning
-
-# 5. 确定报告路径（根据项目结构调整）
-REPORT_FILE="base/target/checkstyle-result.xml"
-if [ ! -f "$REPORT_FILE" ]; then
-    echo "❌ 未生成 Checkstyle 报告，请检查 Maven 配置。"
+if [ ${#module_files[@]} -eq 0 ]; then
+    echo "⚠️ 没有识别到任何模块，跳过检查。"
     exit 0
 fi
 
-# 6. 统计违规数
-VIOLATIONS=$(grep -c '<error' "$REPORT_FILE" || true)
+echo "📝 按模块分组后的相对路径："
+for module in "${!module_files[@]}"; do
+    echo "  $module: ${module_files[$module]}"
+done
+echo "----------------------------------------"
+
+total_violations=0
+
+# 对每个模块执行 Checkstyle
+for module in "${!module_files[@]}"; do
+    file_list="${module_files[$module]}"
+    echo "🚀 扫描模块: $module"
+    echo "   文件列表: $file_list"
+
+    if [ ! -d "$module" ] || [ ! -f "$module/pom.xml" ]; then
+        echo "⚠️ 模块目录 $module 不存在或没有 pom.xml，跳过。"
+        continue
+    fi
+
+    echo "   - 生成 XML 报告..."
+    set +e
+    (cd "$module" && mvn checkstyle:check \
+        -Dcheckstyle.config.location=../checkstyle/huawei-checkstyle.xml \
+        -Dcheckstyle.includes="$file_list" \
+        -Dcheckstyle.violationSeverity=warning)
+    if [ $? -ne 0 ]; then
+        echo "   ⚠️ 模块 $module 的 Checkstyle 检查失败（但继续）"
+    fi
+    set -e
+
+    echo "   - 生成 HTML 报告..."
+    set +e
+    (cd "$module" && mvn checkstyle:checkstyle \
+        -Dcheckstyle.config.location=../checkstyle/huawei-checkstyle.xml \
+        -Dcheckstyle.includes="$file_list" \
+        -Dcheckstyle.outputFormat=html \
+        -Dcheckstyle.violationSeverity=warning)
+    if [ $? -ne 0 ]; then
+        echo "   ⚠️ 模块 $module 的 HTML 报告生成失败（但继续）"
+    fi
+    set -e
+
+    report_file="$module/target/checkstyle-result.xml"
+    if [ -f "$report_file" ]; then
+        count=$(grep -c '<error' "$report_file" || true)
+        total_violations=$((total_violations + count))
+        echo "   模块 $module 违规数: $count"
+    else
+        echo "   ⚠️ 模块 $module 未生成报告"
+    fi
+    echo ""
+done
 
 echo "----------------------------------------"
-if [ $VIOLATIONS -eq 0 ]; then
+if [ $total_violations -eq 0 ]; then
     echo "✅ 所有变更文件未发现违规！"
 else
-    echo "⚠️ 发现 $VIOLATIONS 个违规项（完整文件扫描）"
+    echo "⚠️ 总计发现 $total_violations 个违规。"
+    # 显示部分违规摘要（第一个有违规的模块）
     echo ""
     echo "📋 违规摘要（前 30 条）："
-    grep '<error' "$REPORT_FILE" | head -30 | sed 's/<error //; s/\/>//' | \
-        sed 's|line="|行号: |g; s|column="|列: |g; s|severity="|严重性: |g; s|message="|信息: |g; s|source="||g' | \
-        while read -r line; do
-            echo "  $line"
-        done || true   # 忽略管道错误
+    for module in "${!module_files[@]}"; do
+        report_file="$module/target/checkstyle-result.xml"
+        if [ -f "$report_file" ] && [ $(grep -c '<error' "$report_file" || true) -gt 0 ]; then
+            grep '<error' "$report_file" | head -30 | sed 's/<error //; s/\/>//' | \
+                sed 's|line="|行号: |g; s|column="|列: |g; s|severity="|严重性: |g; s|message="|信息: |g; s|source="||g' | \
+                while read -r line; do
+                    echo "  $line"
+                done || true
+            break
+        fi
+    done
 fi
 
-# 7. 输出到 GitHub Step Summary
+# Step Summary
 if [ -n "$GITHUB_STEP_SUMMARY" ]; then
     {
-        echo "## 📋 Checkstyle 报告"
+        echo "## 📋 Checkstyle 汇总报告"
         echo ""
         echo "| 指标 | 结果 |"
         echo "|------|------|"
-        if [ $VIOLATIONS -eq 0 ]; then
-            echo "| 违规数 | ✅ **0** |"
+        if [ $total_violations -eq 0 ]; then
+            echo "| 总违规数 | ✅ **0** |"
         else
-            echo "| 违规数 | ⚠️ **$VIOLATIONS** |"
+            echo "| 总违规数 | ⚠️ **$total_violations** |"
         fi
-        echo "| 扫描文件 | **$(echo "$CHANGED_FILES" | wc -l)** 个变更 Java 文件 |"
-        echo "| 检查方式 | 对变更文件进行完整扫描 |"
+        echo "| 涉及模块 | ${!module_files[*]} |"
         echo ""
-        echo "📥 完整报告已作为 Artifact 上传，请在工作流运行页面下载。"
+        echo "📥 完整报告已作为 Artifact 上传。"
     } >> "$GITHUB_STEP_SUMMARY"
-    echo "✅ Step Summary 已更新"
 fi
 
-# 8. 始终以成功状态退出
-# ================================================
-# 7. 根据违规数决定构建状态（拦截 PR）
-# ================================================
-if [ $VIOLATIONS -eq 0 ]; then
+# 根据违规数决定退出码
+if [ $total_violations -eq 0 ]; then
     echo "✅ 检查通过，构建成功。"
     exit 0
 else
-    echo "❌ 发现 $VIOLATIONS 个违规，构建失败。"
-    # 为了让 GitHub Actions 标记为失败，退出码设为 1
+    echo "❌ 发现 $total_violations 个违规，构建失败。"
     exit 1
 fi
