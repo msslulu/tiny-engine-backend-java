@@ -62,7 +62,7 @@ mvn -pl base checkstyle:checkstyle \
     -Dcheckstyle.violationSeverity=warning
 
 # 5. 确定报告路径（根据项目结构调整）
-REPORT_FILE="**/target/checkstyle-result.xml"
+REPORT_FILE="base/target/checkstyle-result.xml"
 if [ ! -f "$REPORT_FILE" ]; then
     echo "❌ 未生成 Checkstyle 报告，请检查 Maven 配置。"
     exit 0
