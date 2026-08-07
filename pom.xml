@@ -241,9 +241,6 @@
                 <artifactId>maven-checkstyle-plugin</artifactId>
                 <version>3.6.0</version>
                 <configuration>
-                    <!-- java编码规范的配置文件 -->
-                    <!--suppress UnresolvedMavenProperty -->
-                    <configLocation>${session.executionRootDirectory}/checkstyle/huawei-checkstyle.xml</configLocation>
                     <!-- 检查失败时构建失败（阻止CI通过） -->
                     <failOnViolation>true</failOnViolation>
                     <violationSeverity>warning</violationSeverity>

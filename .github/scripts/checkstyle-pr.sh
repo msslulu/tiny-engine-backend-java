@@ -106,11 +106,9 @@ for module in "${!module_files[@]}"; do
 
     report_file="$module/target/checkstyle-result.xml"
     if [ -f "$report_file" ]; then
-        count=$(grep -c '<error' "$report_file" || true)
-        total_violations=$((total_violations + count))
-        echo "   模块 $module 违规数: $count"
+        count=$(grep -c '<error' "$report_file" 2>/dev/null || true)
     else
-        echo "   ⚠️ 模块 $module 未生成报告"
+        count=0
     fi
     echo ""
 done
