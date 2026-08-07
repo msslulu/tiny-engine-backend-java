@@ -83,7 +83,7 @@ for module in "${!module_files[@]}"; do
 
     echo "   - 生成 XML 报告..."
     set +e
-    (cd "$module" && mvn checkstyle:check \
+    (cd "$module" && mvn checkstyle:check -X ... 2>&1 | grep "Loading checkstyle configuration" \
         -Dcheckstyle.config.location=../checkstyle/huawei-checkstyle.xml \
         -Dcheckstyle.includes="$file_list" \
         -Dcheckstyle.violationSeverity=warning)
