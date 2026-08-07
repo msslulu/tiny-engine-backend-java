@@ -79,10 +79,10 @@ else
     echo ""
     echo "📋 违规摘要（前 30 条）："
     grep '<error' "$REPORT_FILE" | head -30 | sed 's/<error //; s/\/>//' | \
-        sed 's/line="/行号: /; s/column="/列: /; s/severity="/严重性: /; s=message="=信息: =; s=source="//' | \
+        sed 's|line="|行号: |g; s|column="|列: |g; s|severity="|严重性: |g; s|message="|信息: |g; s|source="||g' | \
         while read -r line; do
             echo "  $line"
-        done
+        done || true   # 忽略管道错误
 fi
 
 # 7. 输出到 GitHub Step Summary
