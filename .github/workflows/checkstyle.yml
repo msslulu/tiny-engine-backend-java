@@ -34,15 +34,16 @@ jobs:
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
           restore-keys: |
             ${{ runner.os }}-maven-
+      # 新增：安装所有模块到本地仓库，解决依赖解析
+      - name: Install project (for dependency resolution)
+        run: mvn install -DskipTests -Dmaven.test.skip=true
 
       # 直接运行 Checkstyle 检查（不执行完整的 package）
       - name: Run Checkstyle
         run: bash .github/scripts/checkstyle-pr.sh
         env:
           GITHUB_BASE_REF: ${{ github.base_ref }}
-      # ==================== 编译（PMD 和 SpotBugs 需要） ====================
-      - name: Compile project
-        run: mvn compile -DskipTests
+
       # ==================== PMD 增量扫描 ====================
       - name: Run PMD (incremental)
         id: pmd
