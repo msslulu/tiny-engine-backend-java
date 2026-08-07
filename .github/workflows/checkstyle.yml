@@ -40,6 +40,23 @@ jobs:
         run: bash .github/scripts/checkstyle-pr.sh
         env:
           GITHUB_BASE_REF: ${{ github.base_ref }}
+      # ==================== 编译（PMD 和 SpotBugs 需要） ====================
+      - name: Compile project
+        run: mvn compile -DskipTests
+      # ==================== PMD 增量扫描 ====================
+      - name: Run PMD (incremental)
+        id: pmd
+        continue-on-error: true
+        run: bash .github/scripts/pmd-pr.sh
+        env:
+          GITHUB_BASE_REF: ${{ github.base_ref }}
+      # ==================== 调试：列出所有报告 ====================
+      - name: Debug - list all reports
+        if: always()
+        run: |
+          echo "当前工作目录: $(pwd)"
+          echo "=== 查找所有检查报告 ==="
+          find . -type f \( -name "checkstyle-result.xml" -o -name "pmd-report.xml" -o -name "cpd.xml" -o -name "spotbugsXml.xml" \)
 
       - name: Debug - list all checkstyle reports
         run: |
