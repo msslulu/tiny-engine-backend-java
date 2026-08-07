@@ -67,7 +67,7 @@ jobs:
           GITHUB_BASE_REF: ${{ github.base_ref }}
 
       - name: Prepare SpotBugs onlyAnalyze list
-        run: bash .github/scripts/spotbugs-only-analyze.sh
+        run: bash .github/scripts/spotbugs-incremental.sh
         env:
           GITHUB_BASE_REF: ${{ github.base_ref }}
 
