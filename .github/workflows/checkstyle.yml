@@ -36,7 +36,7 @@ jobs:
             ${{ runner.os }}-maven-
       # 新增：安装所有模块到本地仓库，解决依赖解析
       - name: Install project (for dependency resolution)
-        run: mvn install -DskipTests -Dmaven.test.skip=true -Dcheckstyle.skip=true -Dpmd.skip=true -Dspotbugs.skip=true
+        run: mvn install -DskipTests -Dmaven.test.skip=true -Dcheckstyle.skip=true -Dpmd.skip=true -Dspotbugs.skip=true -Dcpd.skip=true
 
       # 直接运行 Checkstyle 检查（不执行完整的 package）
       - name: Run Checkstyle
