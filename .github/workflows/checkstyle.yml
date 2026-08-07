@@ -46,7 +46,6 @@ jobs:
       # ==================== PMD 增量扫描 ====================
       - name: Run PMD (incremental)
         id: pmd
-        continue-on-error: true
         run: bash .github/scripts/pmd-pr.sh
         env:
           GITHUB_BASE_REF: ${{ github.base_ref }}
