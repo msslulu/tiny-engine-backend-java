@@ -83,12 +83,13 @@ for module in "${!module_files[@]}"; do
 
     echo "   - 生成 XML 报告..."
     set +e
+    PROJECT_ROOT=$(pwd)
     (cd "$module" && \
         echo "   Current directory: $(pwd)" && \
-        echo "   Config file path: ../codecheck/codecheck.xml" && \
-        ls -l $(pwd)/codecheck/codecheck.xml && \
+        echo "   Config file path: ../checkstyle/huawei-checkstyle.xml" && \
+        ls -l $(pwd)/checkstyle/huawei-checkstyle.xml && \
         mvn checkstyle:check \
-            -Dcheckstyle.config.location=$(pwd)/codecheck/codecheck.xml \
+            -Dcheckstyle.config.location=$PROJECT_ROOT/checkstyle/huawei-checkstyle.xml \
             -Dcheckstyle.includes="$file_list" \
             -Dcheckstyle.violationSeverity=warning)
     if [ $? -ne 0 ]; then
