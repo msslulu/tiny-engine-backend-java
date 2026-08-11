@@ -6,7 +6,7 @@
 # ============================================================
 
 set -e
-
+unset GREP_OPTIONS
 echo "========================================"
 echo "  Checkstyle 增量检查"
 echo "  扫描范围：本次变更的 Java 文件（完整文件）"
@@ -118,13 +118,12 @@ if [ $total_violations -eq 0 ]; then
     echo "✅ 所有变更文件未发现违规！"
 else
     echo "⚠️ 总计发现 $total_violations 个违规。"
-    # 显示部分违规摘要（第一个有违规的模块）
     echo ""
     echo "📋 违规摘要（前 30 条）："
     for module in "${!module_files[@]}"; do
         report_file="$module/target/checkstyle-result.xml"
-        if [ -f "$report_file" ] && [ $(grep -c '<error' "$report_file" || true) -gt 0 ]; then
-            grep '<error' "$report_file" | head -30 | sed 's/<error //; s/\/>//' | \
+        if [ -f "$report_file" ] && grep -q -- '<error' "$report_file" 2>/dev/null; then
+            grep -- '<error' "$report_file" 2>/dev/null | head -30 | sed 's/<error //; s/\/>//' | \
                 sed 's|line="|行号: |g; s|column="|列: |g; s|severity="|严重性: |g; s|message="|信息: |g; s|source="||g' | \
                 while read -r line; do
                     echo "  $line"
