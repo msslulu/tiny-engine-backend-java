@@ -82,6 +82,13 @@ for module in "${!module_files[@]}"; do
     fi
 
     echo "   - 生成 XML 报告..."
+    config_path="../checkstyle/huawei-checkstyle.xml"
+    echo "   Checkstyle 配置文件: $(pwd)/$config_path"
+    if [ -f "$config_path" ]; then
+        echo "   ✅ 配置文件存在"
+    else
+        echo "   ❌ 配置文件不存在！"
+    fi
     set +e
     (cd "$module" && mvn checkstyle:check \
         -Dcheckstyle.config.location=../checkstyle/huawei-checkstyle.xml \
