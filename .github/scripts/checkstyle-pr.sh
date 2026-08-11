@@ -82,18 +82,15 @@ for module in "${!module_files[@]}"; do
     fi
 
     echo "   - 生成 XML 报告..."
-    config_path="$PROJECT_ROOT/checkstyle/huawei-checkstyle.xml"
-    echo "   Checkstyle 配置文件: $config_path"
-    if [ -f "$config_path" ]; then
-        echo "   ✅ 配置文件存在"
-    else
-        echo "   ❌ 配置文件不存在！"
-    fi
     set +e
-    (cd "$module" && mvn checkstyle:check \
-        -Dcheckstyle.config.location=../checkstyle/huawei-checkstyle.xml \
-        -Dcheckstyle.includes="$file_list" \
-        -Dcheckstyle.violationSeverity=warning)
+    (cd "$module" && \
+        echo "   Current directory: $(pwd)" && \
+        echo "   Config file path: ../checkstyle/huawei-checkstyle.xml" && \
+        ls -l ../checkstyle/huawei-checkstyle.xml && \
+        mvn checkstyle:check \
+            -Dcheckstyle.config.location=../checkstyle/huawei-checkstyle.xml \
+            -Dcheckstyle.includes="$file_list" \
+            -Dcheckstyle.violationSeverity=warning)
     if [ $? -ne 0 ]; then
         echo "   ⚠️ 模块 $module 的 Checkstyle 检查失败（但继续）"
     fi
