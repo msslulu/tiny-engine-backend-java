@@ -87,7 +87,7 @@ for module in "${!module_files[@]}"; do
     (cd "$module" && \
         echo "   Current directory: $(pwd)" && \
         echo "   Config file path: ../checkstyle/huawei-checkstyle.xml" && \
-        ls -l $(pwd)/checkstyle/huawei-checkstyle.xml && \
+        ls -l $PROJECT_ROOT/checkstyle/huawei-checkstyle.xml && \
         mvn checkstyle:check \
             -Dcheckstyle.config.location=$PROJECT_ROOT/checkstyle/huawei-checkstyle.xml \
             -Dcheckstyle.includes="$file_list" \
