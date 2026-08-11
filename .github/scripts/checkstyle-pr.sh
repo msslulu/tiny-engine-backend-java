@@ -82,8 +82,8 @@ for module in "${!module_files[@]}"; do
     fi
 
     echo "   - 生成 XML 报告..."
-    config_path="../checkstyle/huawei-checkstyle.xml"
-    echo "   Checkstyle 配置文件: $(pwd)/$config_path"
+    config_path="$PROJECT_ROOT/checkstyle/huawei-checkstyle.xml"
+    echo "   Checkstyle 配置文件: $config_path"
     if [ -f "$config_path" ]; then
         echo "   ✅ 配置文件存在"
     else
