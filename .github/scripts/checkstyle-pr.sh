@@ -88,7 +88,7 @@ for module in "${!module_files[@]}"; do
         echo "   Config file path: ../checkstyle/huawei-checkstyle.xml" && \
         ls -l ../checkstyle/huawei-checkstyle.xml && \
         mvn checkstyle:check \
-            -Dcheckstyle.config.location=../checkstyle/huawei-checkstyle.xml \
+            -Dcheckstyle.config.location=/codecheck/codecheck.xml \
             -Dcheckstyle.includes="$file_list" \
             -Dcheckstyle.violationSeverity=warning)
     if [ $? -ne 0 ]; then
