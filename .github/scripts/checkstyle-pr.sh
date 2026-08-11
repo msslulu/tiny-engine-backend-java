@@ -83,7 +83,7 @@ for module in "${!module_files[@]}"; do
 
     echo "   - 生成 XML 报告..."
     set +e
-    (cd "$module" && mvn checkstyle:check -X ... 2>&1 | grep "Loading checkstyle configuration" \
+    (cd "$module" && mvn checkstyle:check \
         -Dcheckstyle.config.location=../checkstyle/huawei-checkstyle.xml \
         -Dcheckstyle.includes="$file_list" \
         -Dcheckstyle.violationSeverity=warning)
@@ -106,13 +106,17 @@ for module in "${!module_files[@]}"; do
 
     report_file="$module/target/checkstyle-result.xml"
     if [ -f "$report_file" ]; then
-        count=$(grep -c '<error' "$report_file" 2>/dev/null || true)
+        count=$(grep -c -- '<error' "$report_file" 2>/dev/null || true)
+        total_violations=$((total_violations + count))   # 累加！
+        echo "   模块 $module 违规数: $count"
     else
+        echo "   ⚠️ 模块 $module 未生成报告"
         count=0
     fi
     echo ""
 done
 
+# 汇总输出
 echo "----------------------------------------"
 if [ $total_violations -eq 0 ]; then
     echo "✅ 所有变更文件未发现违规！"
