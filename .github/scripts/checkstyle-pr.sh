@@ -85,10 +85,10 @@ for module in "${!module_files[@]}"; do
     set +e
     (cd "$module" && \
         echo "   Current directory: $(pwd)" && \
-        echo "   Config file path: ../checkstyle/huawei-checkstyle.xml" && \
-        ls -l ../checkstyle/huawei-checkstyle.xml && \
+        echo "   Config file path: ../codecheck/codecheck.xml" && \
+        ls -l $(pwd)/codecheck/codecheck.xml && \
         mvn checkstyle:check \
-            -Dcheckstyle.config.location=/codecheck/codecheck.xml \
+            -Dcheckstyle.config.location=$(pwd)/codecheck/codecheck.xml \
             -Dcheckstyle.includes="$file_list" \
             -Dcheckstyle.violationSeverity=warning)
     if [ $? -ne 0 ]; then
