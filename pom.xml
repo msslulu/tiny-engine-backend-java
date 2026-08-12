@@ -249,10 +249,10 @@
                     <violationSeverity>warning</violationSeverity>
                     <!-- 输出格式 -->
                     <outputFileFormat>xml</outputFileFormat>
-                    <sourceDirectory>${project.basedir}/src/main/java</sourceDirectory>
-                    <sourceDirectory>${project.basedir}/src/test/java</sourceDirectory>
-                    <includes>src/main/java/**/*.java, src/test/java/**/*.java</includes>
-                    <excludes>target/**</excludes>
+                    <sourceDirectories>
+                        <sourceDirectory>${project.basedir}/src/main/java</sourceDirectory>
+                        <sourceDirectory>${project.basedir}/src/test/java</sourceDirectory>
+                    </sourceDirectories>
 
                 </configuration>
                 <executions>
