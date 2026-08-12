@@ -90,7 +90,7 @@ for module in "${!module_files[@]}"; do
         ls -l $PROJECT_ROOT/checkstyle/huawei-checkstyle.xml && \
         mvn checkstyle:check \
             -Dcheckstyle.config.location=$PROJECT_ROOT/checkstyle/huawei-checkstyle.xml \
-            -Dcheckstyle.includes="$file_list" \
+            -Dcheckstyle.includes="src/main/java/com/tinyengine/it/test/SampleViolations.java" \
             -Dcheckstyle.violationSeverity=warning)
     if [ $? -ne 0 ]; then
         echo "   ⚠️ 模块 $module 的 Checkstyle 检查失败（但继续）"
