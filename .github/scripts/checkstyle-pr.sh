@@ -99,7 +99,7 @@ for module in "${!module_files[@]}"; do
     echo "   - 生成 HTML 报告..."
     set +e
     (cd "$module" && mvn checkstyle:checkstyle \
-        -Dcheckstyle.config.location=../checkstyle/huawei-checkstyle.xml \
+        -Dcheckstyle.config.location=$PROJECT_ROOT/checkstyle/huawei-checkstyle.xml \
         -Dcheckstyle.includes="$file_list" \
         -Dcheckstyle.outputFormat=html \
         -Dcheckstyle.violationSeverity=warning)
