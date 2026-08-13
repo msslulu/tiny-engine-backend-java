@@ -249,6 +249,7 @@
                     <violationSeverity>warning</violationSeverity>
                     <!-- 输出格式 -->
                     <outputFileFormat>xml</outputFileFormat>
+                    <outputFile>${project.build.directory}/checkstyle-result.xml</outputFile>
                     <sourceDirectories>
                         <sourceDirectory>${project.basedir}/src/main/java</sourceDirectory>
                         <sourceDirectory>${project.basedir}/src/test/java</sourceDirectory>
