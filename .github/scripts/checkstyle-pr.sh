@@ -82,6 +82,7 @@ for module in "${!module_files[@]}"; do
     fi
 
     echo "   - 运行 Checkstyle 检查（增量扫描）..."
+    echo "$file_list"
     set +e
     PROJECT_ROOT=$(pwd)
     (cd "$module" && \
