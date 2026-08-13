@@ -92,6 +92,7 @@ for module in "${!module_files[@]}"; do
         mvn checkstyle:check -X \
             -Dcheckstyle.config.location="$PROJECT_ROOT/checkstyle/huawei-checkstyle.xml" \
             -Dcheckstyle.violationSeverity=warning \
+            -Dcheckstyle.outputFormat=xml \
             -Dcheckstyle.includes="**/SampleViolations.java,**/testCheckstyle.java" )
     mvn_exit=$?
     if [ $mvn_exit -ne 0 ]; then
@@ -112,6 +113,7 @@ for module in "${!module_files[@]}"; do
     set +e
     (cd "$module" && mvn checkstyle:checkstyle \
         -Dcheckstyle.config.location="$PROJECT_ROOT/checkstyle/huawei-checkstyle.xml" \
+        -Dcheckstyle.outputFormat=html \
         -Dcheckstyle.violationSeverity=warning) > /dev/null 2>&1
     set -e
     echo ""
