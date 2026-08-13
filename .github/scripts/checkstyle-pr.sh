@@ -92,7 +92,7 @@ for module in "${!module_files[@]}"; do
         mvn checkstyle:check -X \
             -Dcheckstyle.config.location="$PROJECT_ROOT/checkstyle/huawei-checkstyle.xml" \
             -Dcheckstyle.violationSeverity=warning \
-            -Dcheckstyle.includes="**/SampleViolations.java,**/testCheckstyle.java" \)
+            -Dcheckstyle.includes="**/SampleViolations.java,**/testCheckstyle.java" )
     mvn_exit=$?
     if [ $mvn_exit -ne 0 ]; then
         echo "   ⚠️ 模块 $module 的 Checkstyle 检查失败（但继续）"
@@ -114,7 +114,6 @@ for module in "${!module_files[@]}"; do
         -Dcheckstyle.config.location="$PROJECT_ROOT/checkstyle/huawei-checkstyle.xml" \
         -Dcheckstyle.violationSeverity=warning) > /dev/null 2>&1
     set -e
-
     echo ""
 done
 
