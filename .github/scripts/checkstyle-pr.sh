@@ -91,7 +91,7 @@ for module in "${!module_files[@]}"; do
         mvn checkstyle:check \
             -Dcheckstyle.config.location=$PROJECT_ROOT/checkstyle/huawei-checkstyle.xml \
             -Dcheckstyle.outputFormat=xml \
-            -Dcheckstyle.outputFile=$module/target/checkstyle-result.xml \
+            -Dcheckstyle.outputFile=target/checkstyle-result.xml \
             -Dcheckstyle.violationSeverity=warning)
     if [ $? -ne 0 ]; then
         echo "   ⚠️ 模块 $module 的 Checkstyle 检查失败（但继续）"
