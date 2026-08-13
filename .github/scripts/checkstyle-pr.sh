@@ -91,7 +91,7 @@ for module in "${!module_files[@]}"; do
         mvn checkstyle:check \
             -Dcheckstyle.config.location="$PROJECT_ROOT/checkstyle/huawei-checkstyle.xml" \
             -Dcheckstyle.violationSeverity=warning \
-            -Dcheckstyle.includes="$(pwd)/src/main/java/com/tinyengine/it/common/utils/testCheckstyle.java,src/main/java/com/tinyengine/it/test/SampleViolations.java")
+            -Dcheckstyle.includes="${module_files[$module]}")
     mvn_exit=$?
     if [ $mvn_exit -ne 0 ]; then
         echo "   ⚠️ 模块 $module 的 Checkstyle 检查失败（但继续）"
