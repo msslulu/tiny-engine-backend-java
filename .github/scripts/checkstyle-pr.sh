@@ -87,7 +87,7 @@ for module in "${!module_files[@]}"; do
     (cd "$module" && \
         echo "   Current directory: $(pwd)" && \
         echo "   Checking file existence:" && \
-        ls -l $file_list 2>/dev/null || echo "   ⚠️  not found" && \
+        ls -l "${module_files[$module]}" 2>/dev/null || echo "   ⚠️  not found" && \
         mvn checkstyle:check \
             -Dcheckstyle.config.location="$PROJECT_ROOT/checkstyle/huawei-checkstyle.xml" \
             -Dcheckstyle.violationSeverity=warning \
