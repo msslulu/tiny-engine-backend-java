@@ -81,14 +81,18 @@ for module in "${!module_files[@]}"; do
         continue
     fi
 
-    echo "   - 运行 Checkstyle 检查..."
+    echo "   - 运行 Checkstyle 检查（增量扫描）..."
     set +e
     PROJECT_ROOT=$(pwd)
-    # 捕获输出（包括 stderr）
-    output=$(cd "$module" && mvn checkstyle:check \
-        -Dcheckstyle.config.location="$PROJECT_ROOT/checkstyle/huawei-checkstyle.xml" \
-        -Dcheckstyle.includes="src/main/java/com/tinyengine/it/common/utils/testCheckstyle.java,src/main/java/com/tinyengine/it/test/SampleViolations.java" \
-        -Dcheckstyle.violationSeverity=warning 2>&1)
+    (cd "$module" && \
+        echo "   Current directory: $(pwd)" && \
+        echo "   Checking file existence:" && \
+        ls -l src/main/java/com/tinyengine/it/common/utils/testCheckstyle.java 2>/dev/null || echo "   ⚠️ testCheckstyle.java not found" && \
+        ls -l src/main/java/com/tinyengine/it/test/SampleViolations.java 2>/dev/null || echo "   ⚠️ SampleViolations.java not found" && \
+        mvn checkstyle:check \
+            -Dcheckstyle.config.location="$PROJECT_ROOT/checkstyle/huawei-checkstyle.xml" \
+            -Dcheckstyle.violationSeverity=warning \
+            -Dcheckstyle.includes="src/main/java/com/tinyengine/it/common/utils/testCheckstyle.java,src/main/java/com/tinyengine/it/test/SampleViolations.java")
     mvn_exit=$?
     if [ $mvn_exit -ne 0 ]; then
         echo "   ⚠️ 模块 $module 的 Checkstyle 检查失败（但继续）"
