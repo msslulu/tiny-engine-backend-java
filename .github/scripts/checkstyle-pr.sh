@@ -107,7 +107,6 @@ for module in "${!module_files[@]}"; do
     set +e
     (cd "$module" && mvn checkstyle:checkstyle \
         -Dcheckstyle.config.location="$PROJECT_ROOT/checkstyle/huawei-checkstyle.xml" \
-        -Dcheckstyle.includes="$file_list" \
         -Dcheckstyle.violationSeverity=warning) > /dev/null 2>&1
     set -e
 
