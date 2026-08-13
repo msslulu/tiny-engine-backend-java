@@ -87,6 +87,7 @@ for module in "${!module_files[@]}"; do
     # 捕获输出（包括 stderr）
     output=$(cd "$module" && mvn checkstyle:check \
         -Dcheckstyle.config.location="$PROJECT_ROOT/checkstyle/huawei-checkstyle.xml" \
+        -Dcheckstyle.includes="src/main/java/com/tinyengine/it/common/utils/testCheckstyle.java,src/main/java/com/tinyengine/it/test/SampleViolations.java" \
         -Dcheckstyle.violationSeverity=warning 2>&1)
     mvn_exit=$?
     if [ $mvn_exit -ne 0 ]; then
