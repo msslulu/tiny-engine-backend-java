@@ -81,44 +81,36 @@ for module in "${!module_files[@]}"; do
         continue
     fi
 
-    echo "   - 生成 XML 报告..."
+    echo "   - 运行 Checkstyle 检查..."
     set +e
     PROJECT_ROOT=$(pwd)
-    (cd "$module" && \
-        echo "   Current directory: $(pwd)" && \
-        echo "   Config file path: ../checkstyle/huawei-checkstyle.xml" && \
-        ls -l $PROJECT_ROOT/checkstyle/huawei-checkstyle.xml && \
-        mvn checkstyle:check \
-            -Dcheckstyle.config.location=$PROJECT_ROOT/checkstyle/huawei-checkstyle.xml \
-            -Dcheckstyle.outputFormat=xml \
-            -Dcheckstyle.outputFile=target/checkstyle-result.xml \
-            -Dcheckstyle.violationSeverity=warning)
-    if [ $? -ne 0 ]; then
+    # 捕获输出（包括 stderr）
+    output=$(cd "$module" && mvn checkstyle:check \
+        -Dcheckstyle.config.location="$PROJECT_ROOT/checkstyle/huawei-checkstyle.xml" \
+        -Dcheckstyle.violationSeverity=warning 2>&1)
+    mvn_exit=$?
+    if [ $mvn_exit -ne 0 ]; then
         echo "   ⚠️ 模块 $module 的 Checkstyle 检查失败（但继续）"
     fi
     set -e
 
-    echo "   - 生成 HTML 报告..."
-    set +e
-    (cd "$module" && mvn checkstyle:checkstyle \
-        -Dcheckstyle.config.location=$PROJECT_ROOT/checkstyle/huawei-checkstyle.xml \
-        -Dcheckstyle.includes="$file_list" \
-        -Dcheckstyle.outputFormat=html \
-        -Dcheckstyle.violationSeverity=warning)
-    if [ $? -ne 0 ]; then
-        echo "   ⚠️ 模块 $module 的 HTML 报告生成失败（但继续）"
-    fi
-    set -e
-
-    report_file="$module/target/checkstyle-result.xml"
-    if [ -f "$report_file" ]; then
-        count=$(grep -c -- '<error' "$report_file" 2>/dev/null || true)
-        total_violations=$((total_violations + count))   # 累加！
-        echo "   模块 $module 违规数: $count"
-    else
-        echo "   ⚠️ 模块 $module 未生成报告"
+    # 从输出中提取违规数
+    count=$(echo "$output" | grep -oE 'You have [0-9]+ Checkstyle violations' | grep -oE '[0-9]+' | tail -1)
+    if [ -z "$count" ]; then
         count=0
     fi
+    total_violations=$((total_violations + count))
+    echo "   模块 $module 违规数: $count"
+
+    # （可选）生成 HTML 报告供人工查看
+    echo "   - 生成 HTML 报告（可选）..."
+    set +e
+    (cd "$module" && mvn checkstyle:checkstyle \
+        -Dcheckstyle.config.location="$PROJECT_ROOT/checkstyle/huawei-checkstyle.xml" \
+        -Dcheckstyle.includes="$file_list" \
+        -Dcheckstyle.violationSeverity=warning) > /dev/null 2>&1
+    set -e
+
     echo ""
 done
 
