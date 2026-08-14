@@ -85,7 +85,7 @@ for module in "${!module_files[@]}"; do
     echo "$file_list"
     set +e
     PROJECT_ROOT=$(pwd)
-    (cd "$module" && \
+    output=$(cd "$module" && \
         echo "   Current directory: $(pwd)" && \
         echo "   Checking file existence:" && \
         ls -l "${module_files[$module]}" 2>/dev/null || echo "   ⚠️  not found" && \
