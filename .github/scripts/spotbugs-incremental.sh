@@ -1,19 +1,21 @@
 #!/bin/bash
 # ============================================================
 # spotbugs-incremental.sh - 增量 SpotBugs 扫描
-# 功能：只分析本次变更的 Java 文件对应的类
+# 功能：只分析本次变更的 src/main/java 文件对应的类
+# 报告：各模块 target/spotbugsXml.xml 或 target/spotbugs-reports/
 # ============================================================
 
-set -e
+set -euo pipefail
 
 echo "========================================"
 echo "  SpotBugs 增量扫描"
+echo "  扫描范围：本次变更的主源码 Java 类"
 echo "========================================"
 
-# 确定目标分支
-if [ -n "$GITHUB_BASE_REF" ]; then
+# 1. 确定目标分支
+if [ -n "${GITHUB_BASE_REF:-}" ]; then
     BASE_BRANCH="origin/$GITHUB_BASE_REF"
-elif [ -n "$GITHUB_REF" ] && [ "$GITHUB_EVENT_NAME" == "push" ]; then
+elif [ -n "${GITHUB_REF:-}" ] && [ "${GITHUB_EVENT_NAME:-}" == "push" ]; then
     BASE_BRANCH="HEAD^"
 else
     if git rev-parse --verify origin/main >/dev/null 2>&1; then
@@ -27,8 +29,12 @@ else
     echo "🔍 本地运行模式，对比分支: $BASE_BRANCH"
 fi
 
-# 获取变更的 Java 文件
-CHANGED_JAVA=$(git diff --name-only "$BASE_BRANCH" HEAD 2>/dev/null | grep '\.java$' || true)
+# 2. 获取变更的 Java 文件
+if [ "$BASE_BRANCH" == "HEAD^" ]; then
+    CHANGED_JAVA=$(git diff --name-only --diff-filter=ACMRT "$BASE_BRANCH" HEAD -- '*.java' 2>/dev/null || true)
+else
+    CHANGED_JAVA=$(git diff --name-only --diff-filter=ACMRT "$BASE_BRANCH"...HEAD -- '*.java' 2>/dev/null || true)
+fi
 
 if [ -z "$CHANGED_JAVA" ]; then
     echo "✅ 没有 Java 文件变更，跳过 SpotBugs 扫描。"
@@ -37,38 +43,124 @@ fi
 
 echo "📝 变更的 Java 文件："
 echo "$CHANGED_JAVA"
+echo "----------------------------------------"
 
-# 提取类名列表
-class_list=""
+# 3. 按 Maven 模块提取待分析类
+declare -A module_classes
+scan_count=0
+
 for file in $CHANGED_JAVA; do
-    # 文件可能已被删除，跳过
     if [ ! -f "$file" ]; then
+        echo "⚠️ 跳过不存在的文件: $file"
         continue
     fi
-    # 提取包名（假设文件中有 package 声明）
-    pkg=$(grep '^package' "$file" | sed -E 's/package\s+([^;]+);.*/\1/' | head -1)
+
+    module="${file%%/*}"
+    rel="${file#$module/}"
+
+    if [ "$module" == "$file" ] || [ ! -f "$module/pom.xml" ]; then
+        echo "⚠️ 跳过非模块 Java 文件: $file"
+        continue
+    fi
+
+    if [[ "$rel" != src/main/java/* ]]; then
+        echo "ℹ️ SpotBugs 默认分析主类，跳过非主源码文件: $file"
+        continue
+    fi
+
+    pkg=$(sed -nE 's/^[[:space:]]*package[[:space:]]+([^;]+);.*/\1/p' "$file" | head -1)
     if [ -z "$pkg" ]; then
-        echo "⚠️ 跳过 $file（未找到 package 声明）"
+        echo "⚠️ 跳过未声明 package 的文件: $file"
         continue
     fi
-    # 提取类名（不含 .java 后缀）
+
     classname=$(basename "$file" .java)
-    fqdn="$pkg.$classname"
-    if [ -z "$class_list" ]; then
-        class_list="$fqdn"
+    fqcn="$pkg.$classname"
+
+    if [ -z "${module_classes[$module]:-}" ]; then
+        module_classes[$module]="$fqcn"
     else
-        class_list="$class_list,$fqdn"
+        module_classes[$module]="${module_classes[$module]},$fqcn"
     fi
+    scan_count=$((scan_count + 1))
 done
 
-if [ -z "$class_list" ]; then
-    echo "⚠️ 未能提取到任何有效的类名，跳过 SpotBugs。"
+if [ ${#module_classes[@]} -eq 0 ]; then
+    echo "✅ 没有需要 SpotBugs 分析的主源码类。"
     exit 0
 fi
 
-echo "📋 待分析的类：$class_list"
+echo "📋 按模块分组后的类："
+for module in "${!module_classes[@]}"; do
+    echo "  $module: ${module_classes[$module]}"
+done
 echo "----------------------------------------"
 
-# 执行 SpotBugs 增量分析
-echo "🚀 执行 SpotBugs 增量扫描..."
-mvn spotbugs:check -Dspotbugs.onlyAnalyze="$class_list"
+total_bugs=0
+execution_failures=0
+
+# 4. 对每个模块执行 SpotBugs
+for module in "${!module_classes[@]}"; do
+    class_list="${module_classes[$module]}"
+    echo "🚀 扫描模块: $module"
+    echo "   类列表: $class_list"
+
+    rm -f "$module/target/spotbugsXml.xml"
+    rm -rf "$module/target/spotbugs-reports"
+
+    set +e
+    output=$(cd "$module" && mvn spotbugs:check \
+        -Dspotbugs.onlyAnalyze="$class_list" \
+        -Dspotbugs.xmlOutput=true \
+        -Dspotbugs.htmlOutput=true 2>&1)
+    mvn_exit=$?
+    set -e
+    echo "$output"
+
+    bug_count=0
+    while IFS= read -r report_file; do
+        count=$(grep -c -- '<BugInstance ' "$report_file" 2>/dev/null || true)
+        bug_count=$((bug_count + count))
+        echo "   报告: $report_file，问题数: $count"
+    done < <(find "$module/target" -type f \( -name 'spotbugsXml.xml' -o -name 'spotbugs*.xml' \) 2>/dev/null)
+
+    total_bugs=$((total_bugs + bug_count))
+    echo "   模块 $module SpotBugs 问题数: $bug_count"
+
+    if [ "$mvn_exit" -ne 0 ] && [ "$bug_count" -eq 0 ]; then
+        echo "   ❌ 模块 $module 的 SpotBugs 执行失败，且未生成可解析的问题报告。"
+        execution_failures=$((execution_failures + 1))
+    fi
+    echo ""
+done
+
+# 5. 汇总
+echo "----------------------------------------"
+echo "SpotBugs 扫描类数: $scan_count"
+echo "SpotBugs 问题总数: $total_bugs"
+echo "SpotBugs 执行失败模块数: $execution_failures"
+
+if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+    {
+        echo "## SpotBugs 增量扫描"
+        echo ""
+        echo "| 指标 | 结果 |"
+        echo "|------|------|"
+        echo "| 扫描类数 | $scan_count |"
+        echo "| 问题数 | $total_bugs |"
+        echo "| 执行失败模块数 | $execution_failures |"
+    } >> "$GITHUB_STEP_SUMMARY"
+fi
+
+if [ "$execution_failures" -ne 0 ]; then
+    echo "❌ 有 $execution_failures 个模块 SpotBugs 执行失败，构建失败。"
+    exit 1
+fi
+
+if [ "$total_bugs" -ne 0 ]; then
+    echo "❌ SpotBugs 发现 $total_bugs 个问题，构建失败。"
+    exit 1
+fi
+
+echo "✅ SpotBugs 未发现问题。"
+exit 0

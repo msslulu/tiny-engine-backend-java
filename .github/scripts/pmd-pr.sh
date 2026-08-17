@@ -1,11 +1,11 @@
 #!/bin/bash
 # ============================================================
 # pmd-pr.sh - PMD 增量扫描脚本
-# 功能：只扫描本次提交中变更的 Java 文件
-# 生成报告到 target/pmd-report.xml（或自定义路径）
+# 功能：只扫描本次提交中变更且仍存在的 Java 文件
+# 报告：target/pmd-report.xml
 # ============================================================
 
-set -e
+set -euo pipefail
 
 echo "========================================"
 echo "  PMD 增量扫描"
@@ -13,9 +13,9 @@ echo "  扫描范围：本次变更的 Java 文件"
 echo "========================================"
 
 # 1. 确定目标分支
-if [ -n "$GITHUB_BASE_REF" ]; then
+if [ -n "${GITHUB_BASE_REF:-}" ]; then
     BASE_BRANCH="origin/$GITHUB_BASE_REF"
-elif [ -n "$GITHUB_REF" ] && [ "$GITHUB_EVENT_NAME" == "push" ]; then
+elif [ -n "${GITHUB_REF:-}" ] && [ "${GITHUB_EVENT_NAME:-}" == "push" ]; then
     BASE_BRANCH="HEAD^"
 else
     if git rev-parse --verify origin/main >/dev/null 2>&1; then
@@ -30,7 +30,11 @@ else
 fi
 
 # 2. 获取变更的 Java 文件
-CHANGED_FILES=$(git diff --name-only "$BASE_BRANCH" HEAD 2>/dev/null | grep '\.java$' || true)
+if [ "$BASE_BRANCH" == "HEAD^" ]; then
+    CHANGED_FILES=$(git diff --name-only --diff-filter=ACMRT "$BASE_BRANCH" HEAD -- '*.java' 2>/dev/null || true)
+else
+    CHANGED_FILES=$(git diff --name-only --diff-filter=ACMRT "$BASE_BRANCH"...HEAD -- '*.java' 2>/dev/null || true)
+fi
 
 if [ -z "$CHANGED_FILES" ]; then
     echo "✅ 没有 Java 文件变更，跳过 PMD 扫描。"
@@ -41,50 +45,95 @@ echo "📝 变更的 Java 文件："
 echo "$CHANGED_FILES"
 echo "----------------------------------------"
 
-# 3. 生成文件列表（绝对路径）
-FILE_LIST="changed-files.txt"
+# 3. 生成文件列表（绝对路径），跳过已删除文件
+PROJECT_ROOT=$(pwd)
+mkdir -p target
+FILE_LIST="target/pmd-changed-files.txt"
+REPORT_FILE="target/pmd-report.xml"
 > "$FILE_LIST"
+rm -f "$REPORT_FILE"
+
+scan_count=0
 for file in $CHANGED_FILES; do
-    echo "$PWD/$file" >> "$FILE_LIST"
+    if [ ! -f "$file" ]; then
+        echo "⚠️ 跳过不存在的文件: $file"
+        continue
+    fi
+
+    echo "$PROJECT_ROOT/$file" >> "$FILE_LIST"
+    scan_count=$((scan_count + 1))
 done
 
-echo "📄 文件列表已生成：$FILE_LIST"
+if [ "$scan_count" -eq 0 ]; then
+    echo "✅ 没有需要 PMD 扫描的现存 Java 文件。"
+    rm -f "$FILE_LIST"
+    exit 0
+fi
+
+echo "📄 PMD 文件列表：$FILE_LIST"
+cat "$FILE_LIST"
 echo "----------------------------------------"
 
 # 4. 准备 PMD（如果未安装）
-PMD_VERSION="6.55.0"
-PMD_HOME="./pmd"
-if [ ! -d "$PMD_HOME" ]; then
+PMD_VERSION="${PMD_VERSION:-6.55.0}"
+PMD_HOME="${PMD_HOME:-target/pmd-bin-$PMD_VERSION}"
+PMD_ZIP="target/pmd-bin-$PMD_VERSION.zip"
+PMD_RULESETS="${PMD_RULESETS:-category/java/bestpractices.xml,category/java/codestyle.xml,category/java/design.xml,category/java/errorprone.xml,category/java/performance.xml,category/java/security.xml}"
+
+if [ ! -x "$PMD_HOME/bin/run.sh" ]; then
     echo "⬇️ 下载 PMD $PMD_VERSION ..."
-    curl -L "https://github.com/pmd/pmd/releases/download/pmd_releases%2F${PMD_VERSION}/pmd-bin-${PMD_VERSION}.zip" -o pmd.zip
-    unzip -q pmd.zip
-    mv pmd-bin-${PMD_VERSION} "$PMD_HOME"
-    rm pmd.zip
+    rm -rf "$PMD_HOME" "$PMD_ZIP" "target/pmd-bin-$PMD_VERSION"
+    curl -fsSL "https://github.com/pmd/pmd/releases/download/pmd_releases%2F${PMD_VERSION}/pmd-bin-${PMD_VERSION}.zip" -o "$PMD_ZIP"
+    unzip -q "$PMD_ZIP" -d target
+    rm -f "$PMD_ZIP"
 fi
+
 PMD_CMD="$PMD_HOME/bin/run.sh"
 chmod +x "$PMD_CMD"
 
-# 5. 执行 PMD 扫描（使用 -filelist）
+# 5. 执行 PMD 扫描（使用 filelist）
 echo "🚀 执行 PMD 扫描..."
-REPORT_FILE="target/pmd-report.xml"
 set +e
 "$PMD_CMD" pmd --no-cache \
     -filelist "$FILE_LIST" \
     -f xml \
-    -R category/java/quickstart.xml \
+    -R "$PMD_RULESETS" \
     -r "$REPORT_FILE"
-EXIT_CODE=$?
+pmd_exit=$?
 set -e
 
-# 6. 检查是否生成报告
+# 6. 统计违规数
 if [ -f "$REPORT_FILE" ]; then
+    violations=$(grep -c -- '<violation ' "$REPORT_FILE" 2>/dev/null || true)
     echo "✅ PMD 报告已生成：$REPORT_FILE"
 else
-    echo "⚠️ PMD 未生成报告，可能无违规或出错。"
+    violations=0
+    echo "⚠️ PMD 未生成报告。"
 fi
 
-# 7. 清理临时文件
 rm -f "$FILE_LIST"
 
-# 8. 始终以成功状态退出（违规由 YAML 汇总步骤决定）
+if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+    {
+        echo "## PMD 增量扫描"
+        echo ""
+        echo "| 指标 | 结果 |"
+        echo "|------|------|"
+        echo "| 扫描文件数 | $scan_count |"
+        echo "| 违规数 | $violations |"
+        echo "| 报告 | $REPORT_FILE |"
+    } >> "$GITHUB_STEP_SUMMARY"
+fi
+
+if [ "$violations" -gt 0 ]; then
+    echo "❌ PMD 发现 $violations 个问题，构建失败。"
+    exit 1
+fi
+
+if [ "$pmd_exit" -ne 0 ]; then
+    echo "❌ PMD 执行失败，退出码: $pmd_exit"
+    exit "$pmd_exit"
+fi
+
+echo "✅ PMD 未发现问题。"
 exit 0
