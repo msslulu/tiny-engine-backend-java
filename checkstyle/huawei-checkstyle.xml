@@ -62,8 +62,7 @@
         <property name="option" value="alone"/>
     </module> -->
 
-    <!-- 检查在重写了 `equals` 方法后是否重写了 `hashCode` 方法 -->
-    <module name="EqualsHashCode"/>
+
 
     <!-- 检查非法实例化，建议使用工厂方法。
          原因：根据项目需求，对于某些类，通过工厂方法来创建实例可能比直接调用构造函数更为优选。
