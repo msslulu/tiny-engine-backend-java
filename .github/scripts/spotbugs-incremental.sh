@@ -2,7 +2,7 @@
 # ============================================================
 # spotbugs-incremental.sh - 增量 SpotBugs 扫描
 # 功能：只分析本次变更的 src/main/java 文件对应的类
-# 报告：各模块 target/spotbugsXml.xml 或 target/spotbugs-reports/
+# 报告：各模块 target/spotbugsXml.xml、target/spotbugs-reports/spotbugs*.html
 # ============================================================
 
 set -euo pipefail
@@ -98,6 +98,8 @@ echo "----------------------------------------"
 
 total_bugs=0
 execution_failures=0
+total_html_reports=0
+html_failures=0
 
 # 4. 对每个模块执行 SpotBugs
 for module in "${!module_classes[@]}"; do
@@ -116,6 +118,39 @@ for module in "${!module_classes[@]}"; do
     mvn_exit=$?
     set -e
     echo "$output"
+
+    html_count=0
+    while IFS= read -r html_file; do
+        html_count=$((html_count + 1))
+        echo "   HTML 报告: $html_file"
+    done < <(find "$module/target" -type f \( -name 'spotbugs.html' -o -name 'spotbugs*.html' \) 2>/dev/null)
+
+    if [ "$html_count" -eq 0 ]; then
+        echo "   - 未找到 SpotBugs HTML 报告，单独生成可视化报告..."
+        set +e
+        report_output=$(cd "$module" && mvn spotbugs:spotbugs \
+            -Dspotbugs.onlyAnalyze="$class_list" \
+            -Dspotbugs.xmlOutput=true \
+            -Dspotbugs.htmlOutput=true 2>&1)
+        report_exit=$?
+        set -e
+        echo "$report_output"
+
+        html_count=0
+        while IFS= read -r html_file; do
+            html_count=$((html_count + 1))
+            echo "   HTML 报告: $html_file"
+        done < <(find "$module/target" -type f \( -name 'spotbugs.html' -o -name 'spotbugs*.html' \) 2>/dev/null)
+
+        if [ "$report_exit" -ne 0 ] && [ "$html_count" -eq 0 ]; then
+            echo "   ❌ 模块 $module 的 SpotBugs HTML 报告生成失败，退出码: $report_exit"
+        fi
+    fi
+
+    if [ "$html_count" -eq 0 ]; then
+        html_failures=$((html_failures + 1))
+    fi
+    total_html_reports=$((total_html_reports + html_count))
 
     bug_count=0
     while IFS= read -r report_file; do
@@ -139,6 +174,8 @@ echo "----------------------------------------"
 echo "SpotBugs 扫描类数: $scan_count"
 echo "SpotBugs 问题总数: $total_bugs"
 echo "SpotBugs 执行失败模块数: $execution_failures"
+echo "SpotBugs HTML 报告数: $total_html_reports"
+echo "SpotBugs HTML 报告失败模块数: $html_failures"
 
 if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
     {
@@ -149,7 +186,14 @@ if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
         echo "| 扫描类数 | $scan_count |"
         echo "| 问题数 | $total_bugs |"
         echo "| 执行失败模块数 | $execution_failures |"
+        echo "| HTML 报告数 | $total_html_reports |"
+        echo "| HTML 报告失败模块数 | $html_failures |"
     } >> "$GITHUB_STEP_SUMMARY"
+fi
+
+if [ "$html_failures" -ne 0 ]; then
+    echo "❌ 有 $html_failures 个模块未生成 SpotBugs HTML 报告，构建失败。"
+    exit 1
 fi
 
 if [ "$execution_failures" -ne 0 ]; then

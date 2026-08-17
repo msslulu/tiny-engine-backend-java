@@ -68,7 +68,7 @@ jobs:
         run: |
           echo "当前工作目录: $(pwd)"
           echo "=== 查找所有检查报告 ==="
-          find . -type f \( -name "checkstyle-result.xml" -o -name "pmd-report.xml" -o -name "cpd.xml" -o -name "spotbugsXml.xml" -o -name "spotbugs*.xml" \)
+          find . -type f \( -name "checkstyle-result.xml" -o -name "pmd-report.xml" -o -name "pmd-report.html" -o -name "cpd.xml" -o -name "spotbugsXml.xml" -o -name "spotbugs*.xml" -o -name "spotbugs*.html" \)
 
       - name: Debug - list all checkstyle reports
         if: always()
@@ -106,6 +106,7 @@ jobs:
           name: pmd-report
           path: |
             target/pmd-report.xml
+            target/pmd-report.html
           if-no-files-found: warn
 
       - name: Upload SpotBugs report
@@ -115,6 +116,7 @@ jobs:
           name: spotbugs-report
           path: |
             **/target/spotbugsXml.xml
+            **/target/spotbugs*.html
             **/target/spotbugs-reports/
           if-no-files-found: warn
 

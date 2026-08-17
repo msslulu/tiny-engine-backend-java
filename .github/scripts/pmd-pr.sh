@@ -2,7 +2,7 @@
 # ============================================================
 # pmd-pr.sh - PMD 增量扫描脚本
 # 功能：只扫描本次提交中变更且仍存在的 Java 文件
-# 报告：target/pmd-report.xml
+# 报告：target/pmd-report.xml、target/pmd-report.html
 # ============================================================
 
 set -euo pipefail
@@ -50,8 +50,9 @@ PROJECT_ROOT=$(pwd)
 mkdir -p target
 FILE_LIST="target/pmd-changed-files.txt"
 REPORT_FILE="target/pmd-report.xml"
+HTML_REPORT_FILE="target/pmd-report.html"
 > "$FILE_LIST"
-rm -f "$REPORT_FILE"
+rm -f "$REPORT_FILE" "$HTML_REPORT_FILE"
 
 scan_count=0
 for file in $CHANGED_FILES; do
@@ -111,6 +112,23 @@ else
     echo "⚠️ PMD 未生成报告。"
 fi
 
+# 7. 生成 PMD HTML 可视化报告
+echo "🖼️ 生成 PMD HTML 报告..."
+set +e
+"$PMD_CMD" pmd --no-cache \
+    -filelist "$FILE_LIST" \
+    -f html \
+    -R "$PMD_RULESETS" \
+    -r "$HTML_REPORT_FILE"
+pmd_html_exit=$?
+set -e
+
+if [ -f "$HTML_REPORT_FILE" ]; then
+    echo "✅ PMD HTML 报告已生成：$HTML_REPORT_FILE"
+else
+    echo "⚠️ PMD HTML 报告未生成。"
+fi
+
 rm -f "$FILE_LIST"
 
 if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
@@ -121,7 +139,8 @@ if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
         echo "|------|------|"
         echo "| 扫描文件数 | $scan_count |"
         echo "| 违规数 | $violations |"
-        echo "| 报告 | $REPORT_FILE |"
+        echo "| XML 报告 | $REPORT_FILE |"
+        echo "| HTML 报告 | $HTML_REPORT_FILE |"
     } >> "$GITHUB_STEP_SUMMARY"
 fi
 
@@ -133,6 +152,11 @@ fi
 if [ "$pmd_exit" -ne 0 ]; then
     echo "❌ PMD 执行失败，退出码: $pmd_exit"
     exit "$pmd_exit"
+fi
+
+if [ "$pmd_html_exit" -ne 0 ]; then
+    echo "❌ PMD HTML 报告生成失败，退出码: $pmd_html_exit"
+    exit "$pmd_html_exit"
 fi
 
 echo "✅ PMD 未发现问题。"
