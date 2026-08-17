@@ -30,7 +30,11 @@ else
 fi
 
 # 2. 获取变更的 Java 文件
-CHANGED_FILES=$(git diff --name-only "$BASE_BRANCH" HEAD 2>/dev/null | grep '\.java$' || true)
+if [ "$BASE_BRANCH" == "HEAD^" ]; then
+    CHANGED_FILES=$(git diff --name-only --diff-filter=ACMRT "$BASE_BRANCH" HEAD -- '*.java' 2>/dev/null || true)
+else
+    CHANGED_FILES=$(git diff --name-only --diff-filter=ACMRT "$BASE_BRANCH"...HEAD -- '*.java' 2>/dev/null || true)
+fi
 
 if [ -z "$CHANGED_FILES" ]; then
     echo "✅ 没有 Java 文件变更，跳过检查。"
@@ -41,7 +45,7 @@ echo "📝 变更的 Java 文件："
 echo "$CHANGED_FILES"
 echo "----------------------------------------"
 
-# 按模块分组
+# 按模块分组，并把路径转换为 Checkstyle includes 使用的源码相对路径
 declare -A module_files
 for file in $CHANGED_FILES; do
     module="${file%%/*}"
@@ -50,10 +54,22 @@ for file in $CHANGED_FILES; do
         continue
     fi
     rel="${file#$module/}"
+    case "$rel" in
+        src/main/java/*)
+            include="${rel#src/main/java/}"
+            ;;
+        src/test/java/*)
+            include="${rel#src/test/java/}"
+            ;;
+        *)
+            echo "⚠️ 跳过非源码目录 Java 文件: $file"
+            continue
+            ;;
+    esac
     if [ -z "${module_files[$module]}" ]; then
-        module_files[$module]="$rel"
+        module_files[$module]="$include"
     else
-        module_files[$module]="${module_files[$module]},$rel"
+        module_files[$module]="${module_files[$module]},$include"
     fi
 done
 
@@ -69,10 +85,12 @@ done
 echo "----------------------------------------"
 
 total_violations=0
+execution_failures=0
 
 # 对每个模块执行 Checkstyle
 for module in "${!module_files[@]}"; do
     file_list="${module_files[$module]}"
+    report_file="$module/target/checkstyle-result.xml"
     echo "🚀 扫描模块: $module"
     echo "   文件列表: $file_list"
 
@@ -85,11 +103,21 @@ for module in "${!module_files[@]}"; do
     echo "$file_list"
     set +e
     PROJECT_ROOT=$(pwd)
+    rm -f "$report_file"
     output=$(cd "$module" && \
         echo "   Current directory: $(pwd)" && \
         echo "   Checking file existence:" && \
-        ls -l "${module_files[$module]}" 2>/dev/null || echo "   ⚠️  not found" && \
-        mvn checkstyle:check -X \
+        IFS=',' read -ra includes <<< "$file_list" && \
+        for include in "${includes[@]}"; do \
+            if [ -f "src/main/java/$include" ]; then \
+                ls -l "src/main/java/$include"; \
+            elif [ -f "src/test/java/$include" ]; then \
+                ls -l "src/test/java/$include"; \
+            else \
+                echo "   ⚠️  not found: $include"; \
+            fi; \
+        done && \
+        mvn checkstyle:check \
             -Dcheckstyle.config.location="$PROJECT_ROOT/checkstyle/huawei-checkstyle.xml" \
             -Dcheckstyle.violationSeverity=warning \
             -Dcheckstyle.outputFormat=xml \
@@ -99,14 +127,21 @@ for module in "${!module_files[@]}"; do
         echo "   ⚠️ 模块 $module 的 Checkstyle 检查失败（但继续）"
     fi
     set -e
+    echo "$output"
 
-    # 从输出中提取违规数
-    count=$(echo "$output" | grep -oE 'You have [0-9]+ Checkstyle violations' | grep -oE '[0-9]+' | tail -1)
-    if [ -z "$count" ]; then
+    # 从 XML 报告中统计违规数，比解析 Maven 日志更稳定
+    if [ -f "$report_file" ]; then
+        count=$(grep -c -- '<error ' "$report_file" 2>/dev/null || true)
+    else
         count=0
     fi
     total_violations=$((total_violations + count))
     echo "   模块 $module 违规数: $count"
+
+    if [ $mvn_exit -ne 0 ] && [ "$count" -eq 0 ]; then
+        echo "   ❌ 模块 $module 的 Checkstyle 执行失败，且未生成可解析的违规报告。"
+        execution_failures=$((execution_failures + 1))
+    fi
 
     # （可选）生成 HTML 报告供人工查看
     echo "   - 生成 HTML 报告（可选）..."
@@ -152,6 +187,7 @@ if [ -n "$GITHUB_STEP_SUMMARY" ]; then
         else
             echo "| 总违规数 | ⚠️ **$total_violations** |"
         fi
+        echo "| 执行失败模块数 | $execution_failures |"
         echo "| 涉及模块 | ${!module_files[*]} |"
         echo ""
         echo "📥 完整报告已作为 Artifact 上传。"
@@ -159,9 +195,12 @@ if [ -n "$GITHUB_STEP_SUMMARY" ]; then
 fi
 
 # 根据违规数决定退出码
-if [ $total_violations -eq 0 ]; then
+if [ $total_violations -eq 0 ] && [ $execution_failures -eq 0 ]; then
     echo "✅ 检查通过，构建成功。"
     exit 0
+elif [ $execution_failures -ne 0 ]; then
+    echo "❌ 有 $execution_failures 个模块 Checkstyle 执行失败，构建失败。"
+    exit 1
 else
     echo "❌ 发现 $total_violations 个违规，构建失败。"
     exit 1
