@@ -1,7 +1,7 @@
 #!/bin/bash
 # ============================================================
 # spotbugs-incremental.sh - 增量 SpotBugs 扫描
-# 功能：只分析本次变更的 src/main/java 文件对应的类
+# 功能：只分析本次变更的 src/main/java 或 src/test/java 文件对应的类
 # 报告：各模块 target/spotbugsXml.xml、target/spotbugs-reports/spotbugs*.html
 # ============================================================
 
@@ -9,7 +9,7 @@ set -euo pipefail
 
 echo "========================================"
 echo "  SpotBugs 增量扫描"
-echo "  扫描范围：本次变更的主源码 Java 类"
+echo "  扫描范围：本次变更的主源码和测试源码 Java 类"
 echo "========================================"
 
 # 1. 确定目标分支
@@ -47,6 +47,8 @@ echo "----------------------------------------"
 
 # 3. 按 Maven 模块提取待分析类
 declare -A module_classes
+declare -A module_include_tests
+declare -A module_scopes
 scan_count=0
 
 for file in $CHANGED_JAVA; do
@@ -63,8 +65,14 @@ for file in $CHANGED_JAVA; do
         continue
     fi
 
-    if [[ "$rel" != src/main/java/* ]]; then
-        echo "ℹ️ SpotBugs 默认分析主类，跳过非主源码文件: $file"
+    source_scope=""
+    if [[ "$rel" == src/main/java/* ]]; then
+        source_scope="main"
+    elif [[ "$rel" == src/test/java/* ]]; then
+        source_scope="test"
+        module_include_tests[$module]="true"
+    else
+        echo "ℹ️ SpotBugs 分析编译后的 main/test class，跳过非源码目录文件: $file"
         continue
     fi
 
@@ -82,17 +90,25 @@ for file in $CHANGED_JAVA; do
     else
         module_classes[$module]="${module_classes[$module]},$fqcn"
     fi
+
+    if [ -z "${module_scopes[$module]:-}" ]; then
+        module_scopes[$module]="$source_scope"
+    elif [[ ",${module_scopes[$module]}," != *",$source_scope,"* ]]; then
+        module_scopes[$module]="${module_scopes[$module]},$source_scope"
+    fi
+
     scan_count=$((scan_count + 1))
 done
 
 if [ ${#module_classes[@]} -eq 0 ]; then
-    echo "✅ 没有需要 SpotBugs 分析的主源码类。"
+    echo "✅ 没有需要 SpotBugs 分析的主源码或测试源码类。"
     exit 0
 fi
 
 echo "📋 按模块分组后的类："
 for module in "${!module_classes[@]}"; do
-    echo "  $module: ${module_classes[$module]}"
+    include_tests="${module_include_tests[$module]:-false}"
+    echo "  $module (${module_scopes[$module]}, includeTests=$include_tests): ${module_classes[$module]}"
 done
 echo "----------------------------------------"
 
@@ -104,17 +120,32 @@ html_failures=0
 # 4. 对每个模块执行 SpotBugs
 for module in "${!module_classes[@]}"; do
     class_list="${module_classes[$module]}"
+    include_tests="${module_include_tests[$module]:-false}"
     echo "🚀 扫描模块: $module"
     echo "   类列表: $class_list"
+    echo "   扫描测试类: $include_tests"
 
     rm -f "$module/target/spotbugsXml.xml"
     rm -rf "$module/target/spotbugs-reports"
 
     set +e
-    output=$(cd "$module" && mvn spotbugs:check \
-        -Dspotbugs.onlyAnalyze="$class_list" \
-        -Dspotbugs.xmlOutput=true \
-        -Dspotbugs.htmlOutput=true 2>&1)
+    if [ "$include_tests" == "true" ]; then
+        output=$(cd "$module" && mvn test-compile spotbugs:check \
+            -DskipTests \
+            -Dcheckstyle.skip=true \
+            -Dpmd.skip=true \
+            -Dcpd.skip=true \
+            -Dspotbugs.onlyAnalyze="$class_list" \
+            -Dspotbugs.includeTests=true \
+            -Dspotbugs.xmlOutput=true \
+            -Dspotbugs.htmlOutput=true 2>&1)
+    else
+        output=$(cd "$module" && mvn spotbugs:check \
+            -Dspotbugs.onlyAnalyze="$class_list" \
+            -Dspotbugs.includeTests=false \
+            -Dspotbugs.xmlOutput=true \
+            -Dspotbugs.htmlOutput=true 2>&1)
+    fi
     mvn_exit=$?
     set -e
     echo "$output"
@@ -128,10 +159,23 @@ for module in "${!module_classes[@]}"; do
     if [ "$html_count" -eq 0 ]; then
         echo "   - 未找到 SpotBugs HTML 报告，单独生成可视化报告..."
         set +e
-        report_output=$(cd "$module" && mvn spotbugs:spotbugs \
-            -Dspotbugs.onlyAnalyze="$class_list" \
-            -Dspotbugs.xmlOutput=true \
-            -Dspotbugs.htmlOutput=true 2>&1)
+        if [ "$include_tests" == "true" ]; then
+            report_output=$(cd "$module" && mvn test-compile spotbugs:spotbugs \
+                -DskipTests \
+                -Dcheckstyle.skip=true \
+                -Dpmd.skip=true \
+                -Dcpd.skip=true \
+                -Dspotbugs.onlyAnalyze="$class_list" \
+                -Dspotbugs.includeTests=true \
+                -Dspotbugs.xmlOutput=true \
+                -Dspotbugs.htmlOutput=true 2>&1)
+        else
+            report_output=$(cd "$module" && mvn spotbugs:spotbugs \
+                -Dspotbugs.onlyAnalyze="$class_list" \
+                -Dspotbugs.includeTests=false \
+                -Dspotbugs.xmlOutput=true \
+                -Dspotbugs.htmlOutput=true 2>&1)
+        fi
         report_exit=$?
         set -e
         echo "$report_output"
