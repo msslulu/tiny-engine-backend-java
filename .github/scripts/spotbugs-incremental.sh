@@ -2,10 +2,273 @@
 # ============================================================
 # spotbugs-incremental.sh - 增量 SpotBugs 扫描
 # 功能：只分析本次变更的 src/main/java 或 src/test/java 文件对应的类
-# 报告：各模块 target/spotbugsXml.xml、target/spotbugs-reports/spotbugs*.html
+# 报告：各模块 target/spotbugsXml.xml、target/spotbugs-reports/spotbugs.html
 # ============================================================
 
 set -euo pipefail
+
+PYTHON_BIN="${PYTHON_BIN:-}"
+if [ -z "$PYTHON_BIN" ]; then
+    if command -v python3 >/dev/null 2>&1; then
+        PYTHON_BIN="python3"
+    elif command -v python >/dev/null 2>&1; then
+        PYTHON_BIN="python"
+    fi
+fi
+
+generate_styled_spotbugs_html_report() {
+    local module_dir="$1"
+    local module_name="$2"
+    local class_list="$3"
+    local output_file="$module_dir/target/spotbugs-reports/spotbugs.html"
+    local xml_files=()
+
+    while IFS= read -r xml_file; do
+        xml_files+=("$xml_file")
+    done < <(find "$module_dir/target" -type f \( -name 'spotbugsXml.xml' -o -name 'spotbugs*.xml' \) 2>/dev/null)
+
+    if [ ${#xml_files[@]} -eq 0 ] || [ -z "$PYTHON_BIN" ]; then
+        return 1
+    fi
+
+    mkdir -p "$(dirname "$output_file")"
+    "$PYTHON_BIN" - "$output_file" "$module_name" "$class_list" "${xml_files[@]}" <<'PY'
+import datetime
+import html
+import sys
+import xml.etree.ElementTree as ET
+
+output_file = sys.argv[1]
+module_name = sys.argv[2]
+class_list = sys.argv[3]
+xml_files = sys.argv[4:]
+priority_names = {
+    "1": "High",
+    "2": "Medium",
+    "3": "Low",
+    "4": "Experimental",
+}
+bugs = []
+
+for xml_file in xml_files:
+    try:
+        root = ET.parse(xml_file).getroot()
+    except ET.ParseError:
+        continue
+
+    for bug in root.findall(".//BugInstance"):
+        source = bug.find("SourceLine")
+        bug_class = bug.find("Class")
+        long_message = bug.findtext("LongMessage") or bug.findtext("ShortMessage") or ""
+        location = ""
+        if source is not None:
+            location = source.get("sourcepath") or source.get("sourcefile") or ""
+            line = source.get("start") or source.get("startLine") or ""
+            if line and line != "-1":
+                location = f"{location}:{line}" if location else line
+
+        bugs.append({
+            "priority": priority_names.get(bug.get("priority", ""), bug.get("priority", "")),
+            "rank": bug.get("rank", ""),
+            "category": bug.get("category", ""),
+            "type": bug.get("type", ""),
+            "class": bug_class.get("classname", "") if bug_class is not None else "",
+            "location": location,
+            "message": long_message.strip(),
+        })
+
+def esc(value):
+    return html.escape(str(value or ""), quote=True)
+
+rows = []
+for bug in bugs:
+    priority_class = esc(bug["priority"].lower())
+    rows.append(f"""
+        <tr>
+          <td><span class="badge {priority_class}">{esc(bug["priority"])}</span></td>
+          <td>{esc(bug["rank"])}</td>
+          <td>{esc(bug["category"])}</td>
+          <td><code>{esc(bug["type"])}</code></td>
+          <td>{esc(bug["class"])}</td>
+          <td>{esc(bug["location"])}</td>
+          <td>{esc(bug["message"])}</td>
+        </tr>
+    """)
+
+empty_state = ""
+if not bugs:
+    empty_state = '<div class="empty">No SpotBugs issues were found in the incremental scan.</div>'
+
+generated_at = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+html_doc = f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SpotBugs Incremental Report - {esc(module_name)}</title>
+  <style>
+    :root {{
+      color-scheme: light;
+      --bg: #f6f8fa;
+      --panel: #ffffff;
+      --text: #24292f;
+      --muted: #57606a;
+      --border: #d0d7de;
+      --accent: #0969da;
+      --high: #cf222e;
+      --medium: #9a6700;
+      --low: #1a7f37;
+      --experimental: #8250df;
+    }}
+    * {{ box-sizing: border-box; }}
+    body {{
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 14px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }}
+    header {{
+      background: #24292f;
+      color: #ffffff;
+      padding: 24px 32px;
+    }}
+    header h1 {{
+      margin: 0 0 8px;
+      font-size: 24px;
+      font-weight: 650;
+      letter-spacing: 0;
+    }}
+    header p {{
+      margin: 0;
+      color: #d0d7de;
+    }}
+    main {{
+      max-width: 1240px;
+      margin: 24px auto;
+      padding: 0 24px 32px;
+    }}
+    .summary {{
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }}
+    .metric {{
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 14px 16px;
+    }}
+    .metric span {{
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+    }}
+    .metric strong {{
+      display: block;
+      margin-top: 4px;
+      font-size: 22px;
+    }}
+    .panel {{
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+    }}
+    table {{
+      width: 100%;
+      border-collapse: collapse;
+    }}
+    th, td {{
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      vertical-align: top;
+    }}
+    th {{
+      background: #f6f8fa;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
+      text-transform: uppercase;
+    }}
+    tr:hover td {{
+      background: #f6f8fa;
+    }}
+    code {{
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+      font-size: 12px;
+      word-break: break-word;
+    }}
+    .badge {{
+      display: inline-block;
+      min-width: 78px;
+      border-radius: 999px;
+      padding: 2px 9px;
+      color: #ffffff;
+      font-size: 12px;
+      font-weight: 650;
+      text-align: center;
+    }}
+    .high {{ background: var(--high); }}
+    .medium {{ background: var(--medium); }}
+    .low {{ background: var(--low); }}
+    .experimental {{ background: var(--experimental); }}
+    .empty {{
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 28px;
+      color: var(--muted);
+      text-align: center;
+    }}
+    .muted {{
+      color: var(--muted);
+      word-break: break-word;
+    }}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>SpotBugs Incremental Report</h1>
+    <p>Module: {esc(module_name)} · Generated: {esc(generated_at)}</p>
+  </header>
+  <main>
+    <section class="summary">
+      <div class="metric"><span>Issues</span><strong>{len(bugs)}</strong></div>
+      <div class="metric"><span>Classes</span><strong>{len([c for c in class_list.split(",") if c])}</strong></div>
+      <div class="metric"><span>Sources</span><strong>{len(xml_files)}</strong></div>
+    </section>
+    <p class="muted">Analyzed classes: {esc(class_list)}</p>
+    {empty_state}
+    <section class="panel">
+      <table>
+        <thead>
+          <tr>
+            <th>Priority</th>
+            <th>Rank</th>
+            <th>Category</th>
+            <th>Type</th>
+            <th>Class</th>
+            <th>Location</th>
+            <th>Message</th>
+          </tr>
+        </thead>
+        <tbody>
+          {''.join(rows)}
+        </tbody>
+      </table>
+    </section>
+  </main>
+</body>
+</html>
+"""
+
+with open(output_file, "w", encoding="utf-8") as report:
+    report.write(html_doc)
+PY
+}
 
 echo "========================================"
 echo "  SpotBugs 增量扫描"
@@ -150,6 +413,10 @@ for module in "${!module_classes[@]}"; do
     set -e
     echo "$output"
 
+    if generate_styled_spotbugs_html_report "$module" "$module" "$class_list"; then
+        echo "   HTML 可视化报告: $module/target/spotbugs-reports/spotbugs.html"
+    fi
+
     html_count=0
     while IFS= read -r html_file; do
         html_count=$((html_count + 1))
@@ -179,6 +446,10 @@ for module in "${!module_classes[@]}"; do
         report_exit=$?
         set -e
         echo "$report_output"
+
+        if generate_styled_spotbugs_html_report "$module" "$module" "$class_list"; then
+            echo "   HTML 可视化报告: $module/target/spotbugs-reports/spotbugs.html"
+        fi
 
         html_count=0
         while IFS= read -r html_file; do
