@@ -118,7 +118,7 @@ for module in "${!module_files[@]}"; do
             fi; \
         done && \
         mvn checkstyle:check \
-            -Dcheckstyle.config.location="$PROJECT_ROOT/checkstyle/huawei-checkstyle.xml" \
+            -Dcheckstyle.config.location="$PROJECT_ROOT/checkstyle/code-check-checkstyle.xml" \
             -Dcheckstyle.violationSeverity=warning \
             -Dcheckstyle.outputFormat=xml \
             -Dcheckstyle.includes="$file_list" 2>&1 )
@@ -147,7 +147,7 @@ for module in "${!module_files[@]}"; do
     echo "   - 生成 HTML 报告（可选）..."
     set +e
     (cd "$module" && mvn checkstyle:checkstyle \
-        -Dcheckstyle.config.location="$PROJECT_ROOT/checkstyle/huawei-checkstyle.xml" \
+        -Dcheckstyle.config.location="$PROJECT_ROOT/checkstyle/code-check-checkstyle.xml" \
         -Dcheckstyle.includes="$file_list" \
         -Dcheckstyle.violationSeverity=warning) > /dev/null 2>&1
     set -e
