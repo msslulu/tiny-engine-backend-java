@@ -18,7 +18,14 @@ package com.tinyengine.it.common.utils;
  * @since 2026-08-17
  */
 public class CheckstyleValidation {
-    private String validationName = "";
+    private String validationName;
+
+    /**
+     * Creates an empty validation state.
+     */
+    public CheckstyleValidation() {
+        validationName = "";
+    }
 
     /**
      * Updates the validation name when the input has text.
@@ -26,18 +33,18 @@ public class CheckstyleValidation {
      * @param name the validation name
      * @return true if the value is accepted
      */
-    public boolean updateValidationName(String name) {
-        if (name == null) {
-            return false;
+    public boolean updateValidationName(final String name) {
+        final String trimmedName = name == null ? "" : name.trim();
+        final boolean accepted = !isEmpty(trimmedName);
+        if (accepted) {
+            validationName = trimmedName;
         }
 
-        String trimmedName = name.trim();
-        if (trimmedName.isEmpty()) {
-            return false;
-        }
+        return accepted;
+    }
 
-        validationName = trimmedName;
-        return true;
+    private static boolean isEmpty(final String value) {
+        return value.isEmpty();
     }
 
     /**
