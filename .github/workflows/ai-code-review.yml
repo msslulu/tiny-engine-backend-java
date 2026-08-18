@@ -1,21 +1,21 @@
 name: AI Code Review
 
 permissions:
-  contents: write
+  contents: read
   issues: write
   pull-requests: write
 
 on:
-  pull_request:
+  pull_request_target:
     types: [opened, reopened, synchronize]
 
 jobs:
   review:
     runs-on: ubuntu-latest
     steps:
-      - uses: anc95/ChatGPT-CodeReview@main
+      - uses: anc95/ChatGPT-CodeReview@8bd66227f057f21e847a8c27c9b356c25271d292
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           LANGUAGE: Chinese
           OPENAI_API_ENDPOINT: https://api.openai.com/v1
