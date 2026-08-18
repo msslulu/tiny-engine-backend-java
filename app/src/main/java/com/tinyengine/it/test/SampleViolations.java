@@ -22,7 +22,14 @@ import java.util.List;
  * @since 2026-08-17
  */
 public class SampleViolations {
-    private final List<String> messages = new ArrayList<>();
+    private final List<String> messages;
+
+    /**
+     * Creates an empty message collection.
+     */
+    public SampleViolations() {
+        messages = new ArrayList<>();
+    }
 
     /**
      * Adds a non-blank message.
@@ -30,18 +37,18 @@ public class SampleViolations {
      * @param message the message
      * @return true if the message is added
      */
-    public boolean addMessage(String message) {
-        if (message == null) {
-            return false;
+    public boolean addMessage(final String message) {
+        final String trimmedMessage = message == null ? "" : message.trim();
+        final boolean added = !isEmpty(trimmedMessage);
+        if (added) {
+            messages.add(trimmedMessage);
         }
 
-        String trimmedMessage = message.trim();
-        if (trimmedMessage.isEmpty()) {
-            return false;
-        }
+        return added;
+    }
 
-        messages.add(trimmedMessage);
-        return true;
+    private static boolean isEmpty(final String value) {
+        return value.isEmpty();
     }
 
     /**
