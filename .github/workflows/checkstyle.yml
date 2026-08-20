@@ -48,6 +48,8 @@ jobs:
         run: bash .github/scripts/checkstyle-pr.sh
         env:
           GITHUB_BASE_REF: ${{ github.base_ref }}
+          EVENT_BEFORE: ${{ github.event.before }}
+          EVENT_SHA: ${{ github.sha }}
 
       # ==================== PMD 增量扫描 ====================
       - name: Run PMD (incremental)
@@ -56,6 +58,8 @@ jobs:
         run: bash .github/scripts/pmd-pr.sh
         env:
           GITHUB_BASE_REF: ${{ github.base_ref }}
+          EVENT_BEFORE: ${{ github.event.before }}
+          EVENT_SHA: ${{ github.sha }}
 
       # ==================== SpotBugs 增量扫描 ====================
       - name: Run SpotBugs (incremental)
@@ -64,6 +68,8 @@ jobs:
         run: bash .github/scripts/spotbugs-incremental.sh
         env:
           GITHUB_BASE_REF: ${{ github.base_ref }}
+          EVENT_BEFORE: ${{ github.event.before }}
+          EVENT_SHA: ${{ github.sha }}
 
       # ==================== 调试：列出所有报告 ====================
       - name: Debug - list all reports

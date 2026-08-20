@@ -34,44 +34,54 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-      - name: Run PMD on changed Java files only
+      - name: Run PMD
         id: pmd
+        env:
+          EVENT_BEFORE: ${{ github.event.before }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          # 1. 确定目标分支（从环境变量获取）
-          if [ -n "$GITHUB_BASE_REF" ]; then
-            BASE_BRANCH="$GITHUB_BASE_REF"
-          else
-            # 如果是 push 事件，回退到 main 或 develop
-            BASE_BRANCH="develop"   # 或 main，根据项目调整
-          fi
+          set -euo pipefail
 
-          # 2. 确保目标分支的远程引用存在
-          git fetch origin "$BASE_BRANCH" --depth=1 || true
+          FILE_LIST="changed-files.txt"
+          rm -f "$FILE_LIST" pmd-report.sarif
 
-          # 3. 获取变更的 Java 文件（比较当前 HEAD 与目标分支）
-          CHANGED_FILES=$(git diff --name-only "origin/$BASE_BRANCH" HEAD | grep '\.java$' || true)
-          
-          echo "📝 变更的 Java 文件列表："
-          if [ -n "$CHANGED_FILES" ]; then
-          echo "$CHANGED_FILES"
-          else
-          echo "（无）"
-          fi
-          echo "----------------------------------------"
-          
-          if [ -z "$CHANGED_FILES" ]; then
-            echo "No Java files changed, skipping PMD."
-            echo "violations=0" >> $GITHUB_OUTPUT
+          case "$GITHUB_EVENT_NAME" in
+            pull_request)
+              git diff --name-only --diff-filter=ACMRT "$PR_BASE_SHA...$PR_HEAD_SHA" -- '*.java' > "$FILE_LIST"
+              SCAN_SCOPE="changed Java files in the pull request"
+              ;;
+            push)
+              if [ -n "${EVENT_BEFORE:-}" ] && [ "$EVENT_BEFORE" != "0000000000000000000000000000000000000000" ]; then
+                git diff --name-only --diff-filter=ACMRT "$EVENT_BEFORE" "$GITHUB_SHA" -- '*.java' > "$FILE_LIST"
+                SCAN_SCOPE="Java files introduced by this push"
+              else
+                find . -type f \( -path '*/src/main/java/*.java' -o -path '*/src/test/java/*.java' \) -print | sed 's|^./||' | sort > "$FILE_LIST"
+                SCAN_SCOPE="all Java source and test files for an initial push"
+              fi
+              ;;
+            schedule)
+              find . -type f \( -path '*/src/main/java/*.java' -o -path '*/src/test/java/*.java' \) -print | sed 's|^./||' | sort > "$FILE_LIST"
+              SCAN_SCOPE="all Java source and test files"
+              ;;
+            *)
+              echo "Unsupported event: $GITHUB_EVENT_NAME"
+              exit 1
+              ;;
+          esac
+
+          echo "PMD scan scope: $SCAN_SCOPE"
+          if [ ! -s "$FILE_LIST" ]; then
+            echo "No Java files to scan."
+            echo "violations=0" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          # 4. 生成文件列表（绝对路径）
-          > changed-files.txt
-          for file in $CHANGED_FILES; do
-            echo "$PWD/$file" >> changed-files.txt
-          done
+          echo "Java files to scan:"
+          cat "$FILE_LIST"
 
-          # 5. 下载 PMD
+          sed -i "s|^|$PWD/|" "$FILE_LIST"
+
           PMD_VERSION="6.55.0"
           curl -L "https://github.com/pmd/pmd/releases/download/pmd_releases%2F${PMD_VERSION}/pmd-bin-${PMD_VERSION}.zip" -o pmd.zip
           unzip -q pmd.zip
@@ -79,14 +89,12 @@ jobs:
           PMD_CMD="$PWD/pmd/bin/run.sh"
           chmod +x "$PMD_CMD"
 
-          # 6. 扫描变更的 Java 文件
           "$PMD_CMD" pmd --no-cache \
-              --file-list changed-files.txt \
+              -filelist "$FILE_LIST" \
               -f sarif \
               -R rulesets/java/quickstart.xml \
               -r pmd-report.sarif || true
 
-          # 7. 统计违规数
           if [ -f pmd-report.sarif ]; then
             violations=$(jq '.runs[0].results | length' pmd-report.sarif)
           else
@@ -94,8 +102,7 @@ jobs:
           fi
           echo "violations=$violations" >> $GITHUB_OUTPUT
 
-          # 清理
-          rm -f changed-files.txt
+          rm -f "$FILE_LIST"
       
 
       - name: Install sarif-tools and convert to HTML

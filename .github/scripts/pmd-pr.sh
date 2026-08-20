@@ -12,11 +12,15 @@ echo "  PMD 增量扫描"
 echo "  扫描范围：本次变更的 Java 文件"
 echo "========================================"
 
-# 1. 确定目标分支
+# 1. 确定比较基线
 if [ -n "${GITHUB_BASE_REF:-}" ]; then
     BASE_BRANCH="origin/$GITHUB_BASE_REF"
-elif [ -n "${GITHUB_REF:-}" ] && [ "${GITHUB_EVENT_NAME:-}" == "push" ]; then
-    BASE_BRANCH="HEAD^"
+elif [ "${GITHUB_EVENT_NAME:-}" == "push" ]; then
+    BASE_BRANCH="${EVENT_BEFORE:-}"
+    HEAD_COMMIT="${EVENT_SHA:-${GITHUB_SHA:-HEAD}}"
+    if [ -z "$BASE_BRANCH" ] || [ "$BASE_BRANCH" == "0000000000000000000000000000000000000000" ]; then
+        BASE_BRANCH="FULL_SCAN"
+    fi
 else
     if git rev-parse --verify origin/main >/dev/null 2>&1; then
         BASE_BRANCH="origin/main"
@@ -30,8 +34,10 @@ else
 fi
 
 # 2. 获取变更的 Java 文件
-if [ "$BASE_BRANCH" == "HEAD^" ]; then
-    CHANGED_FILES=$(git diff --name-only --diff-filter=ACMRT "$BASE_BRANCH" HEAD -- '*.java' 2>/dev/null || true)
+if [ "$BASE_BRANCH" == "FULL_SCAN" ]; then
+    CHANGED_FILES=$(find . -type f \( -path '*/src/main/java/*.java' -o -path '*/src/test/java/*.java' \) -print | sed 's|^./||' | sort)
+elif [ "${GITHUB_EVENT_NAME:-}" == "push" ]; then
+    CHANGED_FILES=$(git diff --name-only --diff-filter=ACMRT "$BASE_BRANCH" "$HEAD_COMMIT" -- '*.java' 2>/dev/null || true)
 else
     CHANGED_FILES=$(git diff --name-only --diff-filter=ACMRT "$BASE_BRANCH"...HEAD -- '*.java' 2>/dev/null || true)
 fi
