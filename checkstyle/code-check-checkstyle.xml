@@ -68,10 +68,6 @@
          原因：根据项目需求，对于某些类，通过工厂方法来创建实例可能比直接调用构造函数更为优选。
          一个简单的例子是 `java.lang.Boolean` 类。为了节省内存和 CPU 循环，优先使用预定义常量 `TRUE` 和 `FALSE`。应将构造函数调用替换为 `Boolean.valueOf()` 方法的调用。
          一些对性能非常敏感的项目可能也要求为其他类使用工厂方法，以强制使用数字缓存或对象池。 -->
-    <module name="IllegalInstantiation">
-      <property name="classes" value="java.lang.Boolean"/>
-    </module>
-
     <!-- 检查命名规范 -->
     <!-- 本地的 final 变量，包括 catch 参数 -->
     <module name="LocalFinalVariableName"/>
@@ -105,17 +101,11 @@
     <!-- 检查类的继承结构是否符合规范 -->
     <module name="AbstractClassName"/>
 
-    <!-- 配置 Indentation 模块 -->
-    <module name="Indentation"/>
-
     <!-- 每个方法后必须有空行 -->
     <module name="MethodParamPad"/>
 
     <!-- 强制使用强制括号 -->
     <module name="NeedBraces"/>
-
-    <!-- 禁止在代码中使用多余的空格 -->
-    <module name="WhitespaceAfter"/>
 
     <!--检查switch中case后是否加入了跳出语句，例如：return、break、throw、continue -->
     <module name="FallThrough"/>
@@ -157,27 +147,10 @@
          理由：强制封装。-->
     <module name="VisibilityModifier"/>
 
-    <!-- 每一行只能定义一个变量 -->
-    <module name="MultipleVariableDeclarations">
-    </module>
-
-    <!-- 检查数组类型定义的风格。有些采用 Java 风格，例如：public static void main(String[] args)，有些采用 C 风格，例如：public static void main(String args[])
-         检查定义数组时采用 Java 风格还是 C 风格，例如：int[] num 是 Java 风格，int num[] 是 C 风格。默认是 Java 风格 -->
-    <module name="ArrayTypeStyle">
-    </module>
-
     <!-- 检查是否存在 "魔法数字"，魔法数字是没有定义为常量的数值字面量。默认情况下，-1、0、1 和 2 不被视为魔法数字。
     <module name="MagicNumber">
     </module>
     -->
-
-    <!-- 检查是否存在 TODO（待处理）注释。实际上，这是对 Java 注释的通用正则表达式匹配器。要检查 Java 注释中的其他模式，请设置属性 format。
-         检查是否存在 TODO（待处理）注释。TODO 是 Java IDE 自动生成的，代码写完后通常会去掉。-->
-    <module name="TodoComment"/>
-
-    <!-- 检查 long 类型常量是否使用大写的 'L' 来表示，而不是小写的 'l'。这是遵循 Java 语言规范，第 3.10.1 节。
-         检查 long 类型常量是否定义了大写的 'L'。字母小写的 l 与数字 1（或者一）非常相似。 -->
-    <module name="UpperEll"/>
 
     <!-- 检查一个只有私有构造器的类是否声明为 final。只有私有构造器的类必须声明为 final -->
     <module name="FinalClass"/>
@@ -195,18 +168,10 @@
     <module name="RedundantModifier">
     </module>
 
-    <!--- 字符串比较必须使用 equals() -->
-    <module name="StringLiteralEquality">
-    </module>
-
     <!-- if-else嵌套语句个数 最多4层 -->
     <module name="NestedIfDepth">
       <property name="max" value="3"/>
     </module>
-    <module name="com.puppycrawl.tools.checkstyle.checks.imports.UnusedImportsCheck"/>
-
-
-
     <!-- try-catch 嵌套语句个数 最多2层 -->
     <module name="NestedTryDepth">
       <property name="max" value="2"/>
