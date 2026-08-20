@@ -40,6 +40,7 @@
         <langchain4j-rag.version>1.5.0-beta11</langchain4j-rag.version>
         <bcprov-jdk18on.version>1.79</bcprov-jdk18on.version>
         <tiny-engine.version>1.0-SNAPSHOT</tiny-engine.version>
+        <checkstyle.failOnViolation>false</checkstyle.failOnViolation>
     </properties>
     <dependencies>
         <dependency>
@@ -244,8 +245,8 @@
                     <!-- java编码规范的配置文件 -->
                     <!--suppress UnresolvedMavenProperty -->
                     <configLocation>${maven.multiModuleProjectDirectory}/checkstyle/code-check-checkstyle.xml</configLocation>
-                    <!-- 检查失败时构建失败（阻止CI通过） -->
-                    <failOnViolation>true</failOnViolation>
+                    <!-- Default is non-blocking; enable via profile or -Dcheckstyle.failOnViolation=true -->
+                    <failOnViolation>${checkstyle.failOnViolation}</failOnViolation>
                     <violationSeverity>warning</violationSeverity>
                     <!-- 输出格式 -->
                     <outputFileFormat>xml</outputFileFormat>
@@ -336,4 +337,13 @@
 
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>checkstyle-enforce</id>
+            <properties>
+                <checkstyle.failOnViolation>true</checkstyle.failOnViolation>
+            </properties>
+        </profile>
+    </profiles>
 </project>

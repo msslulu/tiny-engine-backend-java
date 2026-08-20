@@ -99,22 +99,26 @@ jobs:
       
 
       - name: Install sarif-tools and convert to HTML
+        if: ${{ always() && hashFiles('pmd-report.sarif') != '' }}
         run: |
           pip install sarif-tools
           sarif html pmd-report.sarif --output pmd-report.html
 
       - name: Upload SARIF file
+        if: ${{ always() && hashFiles('pmd-report.sarif') != '' }}
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: pmd-report.sarif
 
       - name: Upload SARIF file as artifact
+        if: ${{ always() && hashFiles('pmd-report.sarif') != '' }}
         uses: actions/upload-artifact@v7
         with:
           name: pmd-sarif-report        # 给工件起一个有意义的名字
           path: pmd-report.sarif
 
       - name: Upload HTML report
+        if: ${{ always() && hashFiles('pmd-report.html') != '' }}
         uses: actions/upload-artifact@v7
         with:
           name: pmd-html-report

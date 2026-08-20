@@ -92,7 +92,7 @@ jobs:
 
       # 如果检查失败，仍然上传报告供查看
       - name: Upload Checkstyle report
-        if: always()  # 即使失败也上传报告
+        if: ${{ always() && hashFiles('**/target/checkstyle-result.xml', '**/target/checkstyle-checker.xml', '**/target/reports/**') != '' }}
         uses: actions/upload-artifact@v7
         with:
           name: checkstyle-report
@@ -103,7 +103,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload PMD report
-        if: always()
+        if: ${{ always() && hashFiles('target/pmd-report.xml', 'target/pmd-report.html') != '' }}
         uses: actions/upload-artifact@v7
         with:
           name: pmd-report
@@ -113,7 +113,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload SpotBugs report
-        if: always()
+        if: ${{ always() && hashFiles('**/target/spotbugsXml.xml', '**/target/spotbugs-reports/**') != '' }}
         uses: actions/upload-artifact@v7
         with:
           name: spotbugs-report
@@ -122,4 +122,3 @@ jobs:
             **/target/spotbugs*.html
             **/target/spotbugs-reports/
           if-no-files-found: warn
-
