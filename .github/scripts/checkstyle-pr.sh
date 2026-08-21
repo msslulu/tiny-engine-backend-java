@@ -37,9 +37,15 @@ fi
 if [ "$BASE_BRANCH" == "FULL_SCAN" ]; then
     CHANGED_FILES=$(find . -type f \( -path '*/src/main/java/*.java' -o -path '*/src/test/java/*.java' \) -print | sed 's|^./||' | sort)
 elif [ "${GITHUB_EVENT_NAME:-}" == "push" ]; then
-    CHANGED_FILES=$(git diff --name-only --diff-filter=ACMRT "$BASE_BRANCH" "$HEAD_COMMIT" -- '*.java' 2>/dev/null || true)
+    if ! CHANGED_FILES=$(git diff --name-only --diff-filter=ACMRT "$BASE_BRANCH" "$HEAD_COMMIT" -- '*.java'); then
+        echo "❌ 无法比较提交 $BASE_BRANCH 与 $HEAD_COMMIT。"
+        exit 1
+    fi
 else
-    CHANGED_FILES=$(git diff --name-only --diff-filter=ACMRT "$BASE_BRANCH"...HEAD -- '*.java' 2>/dev/null || true)
+    if ! CHANGED_FILES=$(git diff --name-only --diff-filter=ACMRT "$BASE_BRANCH"...HEAD -- '*.java'); then
+        echo "❌ 无法比较基线 $BASE_BRANCH 与 HEAD。"
+        exit 1
+    fi
 fi
 
 if [ -z "$CHANGED_FILES" ]; then
