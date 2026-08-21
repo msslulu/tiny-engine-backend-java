@@ -270,7 +270,7 @@ class JsonUtilsTest {
 	void testDecode_ByteArray() {
 		// Arrange
 		String json = "{\"key\":\"value\",\"number\":123}";
-		byte[] jsonBytes = json.getBytes();
+		byte[] jsonBytes = json.getBytes(StandardCharsets.UTF_8);
 
 		// Act
 		Map<String, Object> result = JsonUtils.decode(jsonBytes, Map.class);
