@@ -40,6 +40,7 @@
         <langchain4j-rag.version>1.5.0-beta11</langchain4j-rag.version>
         <bcprov-jdk18on.version>1.79</bcprov-jdk18on.version>
         <tiny-engine.version>1.0-SNAPSHOT</tiny-engine.version>
+        <checkstyle.failOnViolation>false</checkstyle.failOnViolation>
     </properties>
     <dependencies>
         <dependency>
@@ -235,6 +236,114 @@
                     <target>17</target>   <!-- 生成字节码的 Java 版本 -->
                 </configuration>
             </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-checkstyle-plugin</artifactId>
+                <version>3.6.0</version>
+                <configuration>
+                    <!-- java编码规范的配置文件 -->
+                    <!--suppress UnresolvedMavenProperty -->
+                    <configLocation>${maven.multiModuleProjectDirectory}/checkstyle/code-check-checkstyle.xml</configLocation>
+                    <!-- Default is non-blocking; enable via profile or -Dcheckstyle.failOnViolation=true -->
+                    <failOnViolation>${checkstyle.failOnViolation}</failOnViolation>
+                    <violationSeverity>warning</violationSeverity>
+                    <!-- 输出格式 -->
+                    <outputFileFormat>xml</outputFileFormat>
+                    <outputFile>${project.build.directory}/checkstyle-result.xml</outputFile>
+                    <sourceDirectories>
+                        <sourceDirectory>${project.basedir}/src/main/java</sourceDirectory>
+                        <sourceDirectory>${project.basedir}/src/test/java</sourceDirectory>
+                    </sourceDirectories>
+
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>checkstyle-check</id>
+                        <phase>validate</phase>  <!-- 或 verify，在早期阶段就执行 -->
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- PMD Plugin Configuration -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-pmd-plugin</artifactId>
+                <version>3.21.0</version> <!-- Use the latest stable version -->
+                <configuration>
+                    <rulesets>
+                        <ruleset>category/java/bestpractices.xml</ruleset>
+                        <ruleset>category/java/codestyle.xml</ruleset>
+                        <ruleset>category/java/design.xml</ruleset>
+                        <ruleset>category/java/errorprone.xml</ruleset>
+                        <ruleset>category/java/performance.xml</ruleset>
+                        <ruleset>category/java/security.xml</ruleset>
+                    </rulesets>
+                    <failOnViolation>true</failOnViolation> <!-- Fail build on violations -->
+                    <linkXRef>false</linkXRef> <!-- Disable cross-referencing -->
+                    <minimumTokens>100</minimumTokens>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>pmd-check</id>
+                        <phase>verify</phase> <!-- Changed to verify phase -->
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                        <configuration>
+                            <failOnViolation>true</failOnViolation>
+                        </configuration>
+                            <!-- Fail build on violations -->
+                    </execution>
+                    <execution> <!-- 可选：重复代码检测 -->
+                        <id>cpd-check</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>cpd-check</goal>
+                        </goals>
+                        <configuration>
+                            <failOnViolation>true</failOnViolation>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>com.github.spotbugs</groupId>
+                <artifactId>spotbugs-maven-plugin</artifactId>
+                <version>4.7.3.1</version> <!-- Use the latest stable version -->
+                <executions>
+                    <execution>
+                        <id>spotbugs-check</id>
+                        <phase>verify</phase> <!-- Run during the verify phase -->
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <effort>Max</effort> <!-- Analysis effort level: Min, Default, or Max -->
+                    <threshold>Low</threshold> <!-- Bug severity threshold: High, Default, or Low -->
+                    <failOnError>true</failOnError> <!-- Fail build on SpotBugs errors -->
+                    <xmlOutput>true</xmlOutput>
+                    <htmlOutput>true</htmlOutput>
+                    <outputDirectory>${project.build.directory}/spotbugs-reports</outputDirectory>
+
+                </configuration>
+            </plugin>
+
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>checkstyle-enforce</id>
+            <properties>
+                <checkstyle.failOnViolation>true</checkstyle.failOnViolation>
+            </properties>
+        </profile>
+    </profiles>
 </project>

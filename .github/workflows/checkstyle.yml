@@ -3,35 +3,128 @@ name: Checkstyle Code Quality
 on:
   push:
     branches:
-      - develop  # 或者你想要检查的分支
+      - develop
   pull_request:
     branches:
-      - develop  # 你可以在 PR 时检查代码
+      - develop
+
+permissions:
+  contents: read
 
 jobs:
-  check:
+  checkstyle:
     runs-on: ubuntu-24.04
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
-      # 检出代码
       - name: Checkout code
-        uses: actions/checkout@v4
-
-      # 设置 JDK（如果是 Java 项目）
-      - name: Set up JDK 17.*
-        uses: actions/setup-java@v4
+        uses: actions/checkout@v6
         with:
-          java-version: '17.*'
+          fetch-depth: 0   # 必须拉取完整历史，才能比较分支差异
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          java-version: '17'
           distribution: 'temurin'
 
-      # 安装依赖并运行 Checkstyle（如果是 Maven 项目）
-      - name: Install dependencies and run Checkstyle
-        run: |
-          mvn clean package
+      # 缓存 Maven 依赖，加速构建
+      - name: Cache Maven dependencies
+        uses: actions/cache@v5
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+      # 新增：安装所有模块到本地仓库，解决依赖解析
+      - name: Install project (for dependency resolution)
+        id: install
+        run: mvn install -DskipTests -Dmaven.test.skip=true -Dcheckstyle.skip=true -Dpmd.skip=true -Dspotbugs.skip=true -Dcpd.skip=true
 
-      # 查看 Checkstyle 检查报告
+      # 直接运行 Checkstyle 检查（不执行完整的 package）
+      - name: Run Checkstyle
+        id: checkstyle
+        run: bash .github/scripts/checkstyle-pr.sh
+        env:
+          GITHUB_BASE_REF: ${{ github.base_ref }}
+          EVENT_BEFORE: ${{ github.event.before }}
+          EVENT_SHA: ${{ github.sha }}
+
+      # ==================== PMD 增量扫描 ====================
+      - name: Run PMD (incremental)
+        if: ${{ always() && steps.install.outcome == 'success' }}
+        id: pmd
+        run: bash .github/scripts/pmd-pr.sh
+        env:
+          GITHUB_BASE_REF: ${{ github.base_ref }}
+          EVENT_BEFORE: ${{ github.event.before }}
+          EVENT_SHA: ${{ github.sha }}
+
+      # ==================== SpotBugs 增量扫描 ====================
+      - name: Run SpotBugs (incremental)
+        if: ${{ always() && steps.install.outcome == 'success' }}
+        id: spotbugs
+        run: bash .github/scripts/spotbugs-incremental.sh
+        env:
+          GITHUB_BASE_REF: ${{ github.base_ref }}
+          EVENT_BEFORE: ${{ github.event.before }}
+          EVENT_SHA: ${{ github.sha }}
+
+      # ==================== 调试：列出所有报告 ====================
+      - name: Debug - list all reports
+        if: always()
+        run: |
+          echo "当前工作目录: $(pwd)"
+          echo "=== 查找所有检查报告 ==="
+          find . -type f \( -name "checkstyle-result.xml" -o -name "pmd-report.xml" -o -name "pmd-report.html" -o -name "cpd.xml" -o -name "spotbugsXml.xml" -o -name "spotbugs*.xml" -o -name "spotbugs*.html" \)
+
+      - name: Debug - list all checkstyle reports
+        if: always()
+        run: |
+          echo "当前工作目录: $(pwd)"
+          echo "=== 列出所有 target 目录 ==="
+          find . -type d -name "target" -exec echo "目录: {}" \; -exec ls -la {}/ \;
+          echo "=== 查找 checkstyle 文件 ==="
+          find . -name "checkstyle*.xml" -o -name "checkstyle*.html" | while read f; do echo "找到: $f"; done
+
+      - name: Debug - Check HTML existence
+        if: always()
+        run: |
+          echo "Searching for checkstyle.html:"
+          find . -name "checkstyle.html" -type f
+          echo "Also check reports directory:"
+          ls -la base/target/reports/ || echo "base/target/reports not found"
+
+      # 如果检查失败，仍然上传报告供查看
       - name: Upload Checkstyle report
-        uses: actions/upload-artifact@v4
+        if: ${{ always() && hashFiles('**/target/checkstyle-result.xml', '**/target/checkstyle-checker.xml', '**/target/reports/**') != '' }}
+        uses: actions/upload-artifact@v7
         with:
           name: checkstyle-report
-          path: target/checkstyle-result.xml  # 这个路径应该是 Maven 生成的检查报告路径
+          path: | 
+            **/target/checkstyle-result.xml
+            **/target/checkstyle-checker.xml
+            **/target/reports/
+          if-no-files-found: warn
+
+      - name: Upload PMD report
+        if: ${{ always() && hashFiles('target/pmd-report.xml', 'target/pmd-report.html') != '' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: pmd-report
+          path: |
+            target/pmd-report.xml
+            target/pmd-report.html
+          if-no-files-found: warn
+
+      - name: Upload SpotBugs report
+        if: ${{ always() && hashFiles('**/target/spotbugsXml.xml', '**/target/spotbugs-reports/**') != '' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: spotbugs-report
+          path: |
+            **/target/spotbugsXml.xml
+            **/target/spotbugs*.html
+            **/target/spotbugs-reports/
+          if-no-files-found: warn
