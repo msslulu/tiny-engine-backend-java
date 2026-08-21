@@ -45,6 +45,7 @@ jobs:
 
           FILE_LIST="changed-files.txt"
           rm -f "$FILE_LIST" pmd-report.sarif
+          trap 'rm -f "$FILE_LIST"' EXIT
 
           case "$GITHUB_EVENT_NAME" in
             pull_request)
@@ -89,20 +90,42 @@ jobs:
           PMD_CMD="$PWD/pmd/bin/run.sh"
           chmod +x "$PMD_CMD"
 
+          # PMD can use a non-zero exit code for rule violations. Validate the SARIF
+          # report below before treating that case differently from an execution error.
+          set +e
           "$PMD_CMD" pmd --no-cache \
               -filelist "$FILE_LIST" \
               -f sarif \
               -R rulesets/java/quickstart.xml \
-              -r pmd-report.sarif || true
+              -r pmd-report.sarif
+          pmd_exit=$?
+          set -e
 
-          if [ -f pmd-report.sarif ]; then
-            violations=$(jq '.runs[0].results | length' pmd-report.sarif)
-          else
-            violations=0
+          if [ ! -s pmd-report.sarif ]; then
+            echo "PMD completed without producing a SARIF report."
+            exit 1
           fi
-          echo "violations=$violations" >> $GITHUB_OUTPUT
 
-          rm -f "$FILE_LIST"
+          if ! jq -e '
+            (.runs | type == "array" and length > 0)
+            and all(.runs[];
+              (.results | type == "array")
+              and ((.invocations? // []) | all(.[]; .executionSuccessful != false))
+              and ((.invocations? // []) | all(.[];
+                (.toolExecutionNotifications? // []) | all(.[]; .level != "error")
+              ))
+            )
+          ' pmd-report.sarif > /dev/null; then
+            echo "PMD produced an invalid or unsuccessful SARIF report."
+            exit 1
+          fi
+
+          violations=$(jq '[.runs[]?.results[]?] | length' pmd-report.sarif)
+          if [ "$pmd_exit" -ne 0 ] && [ "$violations" -eq 0 ]; then
+            echo "PMD exited with status $pmd_exit without reporting rule violations."
+            exit "$pmd_exit"
+          fi
+          echo "violations=$violations" >> "$GITHUB_OUTPUT"
       
 
       - name: Install sarif-tools and convert to HTML
