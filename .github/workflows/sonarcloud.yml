@@ -32,6 +32,19 @@ on:
   push:
     branches: [ "develop" ]
   workflow_dispatch:
+    inputs:
+      scan-type:
+        description: '扫描类型'
+        required: true
+        default: 'full'
+        type: choice
+        options:
+          - incremental
+          - full
+      branch:
+        description: '要扫描的分支'
+        required: true
+        default: 'develop'
 
 permissions:
   pull-requests: read # allows SonarCloud to decorate PRs with analysis results
