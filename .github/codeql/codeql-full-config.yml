@@ -1,0 +1,3 @@
+# Full CodeQL scan config.
+paths-ignore:
+  - '**/target/'
