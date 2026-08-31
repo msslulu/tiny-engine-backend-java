@@ -2,7 +2,7 @@ name: CodeQL Full Scan
 
 on:
   schedule:
-    - cron: '42 12 * * 5'
+    - cron: '42 6 * * 1'
   workflow_dispatch:
 
 permissions:
