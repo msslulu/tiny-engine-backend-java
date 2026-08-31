@@ -1,10 +1,9 @@
-name: CodeQL Incremental
+name: CodeQL Full Scan
 
 on:
-  push:
-    branches: [ "develop" ]
-  pull_request:
-    branches: [ "develop" ]
+  schedule:
+    - cron: '34 7 * * 1'
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -33,7 +32,7 @@ jobs:
 
   analyze:
     needs: detect
-    name: Analyze (${{ matrix.language }})
+    name: Full scan (${{ matrix.language }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -58,9 +57,13 @@ jobs:
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
-          config-file: ./.github/codeql/codeql-config.yml
+          config-file: ./.github/codeql/codeql-full-config.yml
+
+      - name: Build project
+        if: matrix.language == 'java-kotlin'
+        run: mvn -B clean test-compile -DskipTests -Dcheckstyle.skip=true -Dpmd.skip=true -Dspotbugs.skip=true -Dcpd.skip=true
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v4
         with:
-          category: "/language:${{ matrix.language }}"
+          category: "/codeql-full:${{ matrix.language }}"
