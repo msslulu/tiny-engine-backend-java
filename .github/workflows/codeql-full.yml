@@ -64,6 +64,7 @@ jobs:
         run: mvn -B clean test-compile -DskipTests -Dcheckstyle.skip=true -Dpmd.skip=true -Dspotbugs.skip=true -Dcpd.skip=true
 
       - name: Perform CodeQL Analysis
+        id: codeql-analysis
         uses: github/codeql-action/analyze@v4
         with:
           output: ${{ runner.temp }}/codeql-results
@@ -71,13 +72,49 @@ jobs:
           upload: always
           category: "/codeql-full:${{ matrix.language }}"
 
+      - name: Collect CodeQL SARIF reports
+        if: always()
+        shell: bash
+        env:
+          CODEQL_OUTPUT: ${{ runner.temp }}/codeql-results
+          CODEQL_PROCESSED_OUTPUT: ${{ runner.temp }}/codeql-results-processed
+          CODEQL_SARIF_OUTPUT: ${{ steps.codeql-analysis.outputs.sarif-output }}
+        run: |
+          rm -rf codeql-sarif
+          mkdir -p codeql-sarif
+
+          {
+            printf 'language=%s\n' '${{ matrix.language }}'
+            printf 'codeql_output=%s\n' "$CODEQL_OUTPUT"
+            printf 'post_processed_output=%s\n' "$CODEQL_PROCESSED_OUTPUT"
+            printf 'action_sarif_output=%s\n' "$CODEQL_SARIF_OUTPUT"
+            printf '\nGenerated SARIF files:\n'
+          } > codeql-sarif/scan-files.txt
+
+          for directory in "$CODEQL_OUTPUT" "$CODEQL_PROCESSED_OUTPUT" "$CODEQL_SARIF_OUTPUT"; do
+            if [[ -n "$directory" && -d "$directory" ]]; then
+              find "$directory" -type f -name '*.sarif' -print0 |
+                while IFS= read -r -d '' file; do
+                  cp "$file" "codeql-sarif/$(basename "$file")"
+                  printf '%s\n' "$file" >> codeql-sarif/scan-files.txt
+                done
+            fi
+          done
+
+          find "$RUNNER_TEMP" -type f -name '*.sarif' -print0 |
+            while IFS= read -r -d '' file; do
+              target="codeql-sarif/$(basename "$file")"
+              if [[ ! -e "$target" ]]; then
+                cp "$file" "$target"
+                printf '%s\n' "$file" >> codeql-sarif/scan-files.txt
+              fi
+            done
+
       - name: Upload CodeQL SARIF report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: codeql-full-sarif-${{ matrix.language }}
-          path: |
-            ${{ runner.temp }}/codeql-results
-            ${{ runner.temp }}/codeql-results-processed
-          if-no-files-found: warn
+          path: codeql-sarif
+          if-no-files-found: error
           retention-days: 30
