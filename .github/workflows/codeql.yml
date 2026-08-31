@@ -28,7 +28,7 @@ jobs:
         id: matrix
         shell: bash
         run: |
-          matrix=$(bash .github/scripts/codeql-matrix.sh)
+          matrix=$(bash .github/scripts/codeql-matrix.sh autobuild)
           printf 'matrix=%s\n' "$matrix" >> "$GITHUB_OUTPUT"
 
   analyze:

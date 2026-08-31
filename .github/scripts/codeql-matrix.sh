@@ -2,6 +2,8 @@
 
 set -euo pipefail
 
+java_build_mode="${1:-autobuild}"
+
 matrix_entries=""
 
 has_files() {
@@ -22,7 +24,7 @@ if has_files '.github/workflows/*.yml' '.github/workflows/*.yaml'; then
 fi
 
 if has_files '*.java'; then
-    add_entry '{"language":"java-kotlin","build-mode":"autobuild"}'
+    add_entry "{\"language\":\"java-kotlin\",\"build-mode\":\"$java_build_mode\"}"
 fi
 
 if has_files '*.js' '*.jsx' '*.ts' '*.tsx' '*.mjs' '*.cjs' '*.vue' '*.html'; then
