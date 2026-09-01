@@ -122,12 +122,77 @@ jobs:
           printf 'invalid_sarif=%s\n' "$invalid_sarif" >> "$GITHUB_OUTPUT"
           printf 'violations=%s\n' "$violations" >> "$GITHUB_OUTPUT"
 
+      - name: Install SARIF tools
+        if: ${{ always() && hashFiles('codeql-sarif/**/*.sarif') != '' }}
+        run: python -m pip install sarif-tools
+
+      - name: Generate CodeQL HTML report
+        id: html-report
+        if: ${{ always() && hashFiles('codeql-sarif/**/*.sarif') != '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          html_dir="codeql-html-report"
+          rm -rf "$html_dir"
+          mkdir -p "$html_dir"
+
+          html_count=0
+          while IFS= read -r -d '' sarif_file; do
+            relative_path="${sarif_file#codeql-sarif/}"
+            html_file="$html_dir/${relative_path%.sarif}.html"
+            mkdir -p "$(dirname "$html_file")"
+
+            sarif html "$sarif_file" --output "$html_file"
+            html_count=$((html_count + 1))
+            printf '%s -> %s\n' "$sarif_file" "$html_file"
+          done < <(find codeql-sarif -type f -name '*.sarif' -print0)
+
+          index_file="$html_dir/index.html"
+          {
+            printf '<!doctype html>\n'
+            printf '<html lang="en">\n'
+            printf '<head><meta charset="utf-8"><title>CodeQL HTML Reports</title></head>\n'
+            printf '<body>\n'
+            printf '<h1>CodeQL HTML Reports - %s</h1>\n' '${{ matrix.language }}'
+            printf '<ul>\n'
+            while IFS= read -r -d '' html_file; do
+              link="${html_file#$html_dir/}"
+              printf '<li><a href="%s">%s</a></li>\n' "$link" "$link"
+            done < <(find "$html_dir" -type f -name '*.html' ! -name 'index.html' -print0 | sort -z)
+            printf '</ul>\n'
+            printf '</body>\n'
+            printf '</html>\n'
+          } > "$index_file"
+
+          if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+            {
+              printf '## CodeQL HTML report\n\n'
+              printf '| Metric | Result |\n'
+              printf '|------|------|\n'
+              printf '| Language | %s |\n' '${{ matrix.language }}'
+              printf '| HTML files | %s |\n' "$html_count"
+              printf '| Artifact | codeql-full-html-%s |\n' '${{ matrix.language }}'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          printf 'html_count=%s\n' "$html_count" >> "$GITHUB_OUTPUT"
+
       - name: Upload CodeQL SARIF report
         if: always()
         uses: actions/upload-artifact@v7
         with:
           name: codeql-full-sarif-${{ matrix.language }}
           path: codeql-sarif
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload CodeQL HTML report
+        if: ${{ always() && hashFiles('codeql-html-report/**/*.html') != '' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: codeql-full-html-${{ matrix.language }}
+          path: codeql-html-report
           if-no-files-found: error
           retention-days: 30
 
