@@ -65,52 +65,62 @@ jobs:
         if: matrix.language == 'java-kotlin'
         run: mvn -B clean test-compile -DskipTests -Dcheckstyle.skip=true -Dpmd.skip=true -Dspotbugs.skip=true -Dcpd.skip=true
 
-      - name: Perform CodeQL Analysis
-        id: codeql-analysis
-        uses: github/codeql-action/analyze@v4
-        with:
-          output: ${{ runner.temp }}/codeql-results
-          post-processed-sarif-path: ${{ runner.temp }}/codeql-results-processed
-          upload: always
-          category: "/codeql-full:${{ matrix.language }}"
-
-      - name: Collect CodeQL SARIF reports
-        if: always()
+      - name: Prepare CodeQL SARIF directory
         shell: bash
-        env:
-          CODEQL_OUTPUT: ${{ runner.temp }}/codeql-results
-          CODEQL_PROCESSED_OUTPUT: ${{ runner.temp }}/codeql-results-processed
-          CODEQL_SARIF_OUTPUT: ${{ steps.codeql-analysis.outputs.sarif-output }}
         run: |
           rm -rf codeql-sarif
           mkdir -p codeql-sarif
 
+      - name: Perform CodeQL Analysis
+        id: codeql-analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          output: ${{ github.workspace }}/codeql-sarif
+          upload: always
+          category: "/codeql-full:${{ matrix.language }}"
+
+      - name: Summarize CodeQL SARIF report
+        id: sarif-summary
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p codeql-sarif
+          report_index="codeql-sarif/scan-files.txt"
+          sarif_count=0
+          invalid_sarif=0
+          violations=0
+
           {
             printf 'language=%s\n' '${{ matrix.language }}'
-            printf 'codeql_output=%s\n' "$CODEQL_OUTPUT"
-            printf 'post_processed_output=%s\n' "$CODEQL_PROCESSED_OUTPUT"
-            printf 'action_sarif_output=%s\n' "$CODEQL_SARIF_OUTPUT"
+            printf 'codeql_output=%s\n' '${{ github.workspace }}/codeql-sarif'
             printf '\nGenerated SARIF files:\n'
-          } > codeql-sarif/scan-files.txt
+          } > "$report_index"
 
-          for directory in "$CODEQL_OUTPUT" "$CODEQL_PROCESSED_OUTPUT" "$CODEQL_SARIF_OUTPUT"; do
-            if [[ -n "$directory" && -d "$directory" ]]; then
-              find "$directory" -type f -name '*.sarif' -print0 |
-                while IFS= read -r -d '' file; do
-                  cp "$file" "codeql-sarif/$(basename "$file")"
-                  printf '%s\n' "$file" >> codeql-sarif/scan-files.txt
-                done
+          while IFS= read -r -d '' file; do
+            sarif_count=$((sarif_count + 1))
+            result_count=$(jq '[.runs[]?.results[]?] | length' "$file" 2>/dev/null || true)
+
+            if [[ "$result_count" =~ ^[0-9]+$ ]]; then
+              violations=$((violations + result_count))
+              printf '%s results=%s\n' "$file" "$result_count" >> "$report_index"
+            else
+              invalid_sarif=$((invalid_sarif + 1))
+              printf '%s results=invalid-sarif\n' "$file" >> "$report_index"
             fi
-          done
+          done < <(find codeql-sarif -type f -name '*.sarif' -print0)
 
-          find "$RUNNER_TEMP" -type f -name '*.sarif' -print0 |
-            while IFS= read -r -d '' file; do
-              target="codeql-sarif/$(basename "$file")"
-              if [[ ! -e "$target" ]]; then
-                cp "$file" "$target"
-                printf '%s\n' "$file" >> codeql-sarif/scan-files.txt
-              fi
-            done
+          {
+            printf '\nSummary:\n'
+            printf 'sarif_count=%s\n' "$sarif_count"
+            printf 'invalid_sarif=%s\n' "$invalid_sarif"
+            printf 'violations=%s\n' "$violations"
+          } >> "$report_index"
+
+          printf 'sarif_count=%s\n' "$sarif_count" >> "$GITHUB_OUTPUT"
+          printf 'invalid_sarif=%s\n' "$invalid_sarif" >> "$GITHUB_OUTPUT"
+          printf 'violations=%s\n' "$violations" >> "$GITHUB_OUTPUT"
 
       - name: Upload CodeQL SARIF report
         if: always()
@@ -120,3 +130,32 @@ jobs:
           path: codeql-sarif
           if-no-files-found: error
           retention-days: 30
+
+      - name: Check CodeQL findings
+        if: always()
+        shell: bash
+        env:
+          SARIF_COUNT: ${{ steps.sarif-summary.outputs.sarif_count }}
+          INVALID_SARIF: ${{ steps.sarif-summary.outputs.invalid_sarif }}
+          VIOLATIONS: ${{ steps.sarif-summary.outputs.violations }}
+        run: |
+          sarif_count="${SARIF_COUNT:-0}"
+          invalid_sarif="${INVALID_SARIF:-0}"
+          violations="${VIOLATIONS:-0}"
+
+          if [[ "$sarif_count" -eq 0 ]]; then
+            echo "::error::CodeQL did not produce a SARIF report."
+            exit 1
+          fi
+
+          if [[ "$invalid_sarif" -ne 0 ]]; then
+            echo "::error::CodeQL produced $invalid_sarif invalid SARIF report(s)."
+            exit 1
+          fi
+
+          if [[ "$violations" -ne 0 ]]; then
+            echo "::error::CodeQL found $violations result(s)."
+            exit 1
+          fi
+
+          echo "CodeQL found no results."
