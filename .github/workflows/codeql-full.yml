@@ -139,16 +139,12 @@ jobs:
 
           html_count=0
           while IFS= read -r -d '' sarif_file; do
-            relative_path="${sarif_file#codeql-sarif/}"
-            html_file="$html_dir/${relative_path%.sarif}.html"
-            mkdir -p "$(dirname "$html_file")"
-
-            sarif html "$sarif_file" --output "$html_file"
+            sarif html "$sarif_file" --output "$html_dir"
             html_count=$((html_count + 1))
-            printf '%s -> %s\n' "$sarif_file" "$html_file"
+            printf '%s -> %s/\n' "$sarif_file" "$html_dir"
           done < <(find codeql-sarif -type f -name '*.sarif' -print0)
 
-          index_file="$html_dir/index.html"
+          index_file="$html_dir/reports.html"
           {
             printf '<!doctype html>\n'
             printf '<html lang="en">\n'
@@ -159,7 +155,7 @@ jobs:
             while IFS= read -r -d '' html_file; do
               link="${html_file#$html_dir/}"
               printf '<li><a href="%s">%s</a></li>\n' "$link" "$link"
-            done < <(find "$html_dir" -type f -name '*.html' ! -name 'index.html' -print0 | sort -z)
+            done < <(find "$html_dir" -maxdepth 1 -type f -name '*.html' ! -name 'reports.html' -print0 | sort -z)
             printf '</ul>\n'
             printf '</body>\n'
             printf '</html>\n'
