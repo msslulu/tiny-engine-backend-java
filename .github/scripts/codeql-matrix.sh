@@ -7,7 +7,7 @@ java_build_mode="${1:-autobuild}"
 matrix_entries=""
 
 has_files() {
-    git ls-files "$@" | grep -q .
+    git ls-files "$@" | grep . >/dev/null
 }
 
 add_entry() {
