@@ -227,10 +227,10 @@ public class DatabaseCleanupService {
         boolean exists = false;
         try {
             final String sql =
-                "SELECT COUNT(*) FROM information_schema.tables "
+                    "SELECT COUNT(*) FROM information_schema.tables "
                     + "WHERE table_schema = DATABASE() AND table_name = ?";
             final Integer count =
-                jdbcTemplate.queryForObject(sql, Integer.class, tableName.toUpperCase(Locale.ROOT));
+                    jdbcTemplate.queryForObject(sql, Integer.class, tableName.toUpperCase(Locale.ROOT));
             exists = count != null && count > 0;
         } catch (DataAccessException | IllegalArgumentException exception) {
             logWarn("The checklist has failed: {}", exception.getMessage());
