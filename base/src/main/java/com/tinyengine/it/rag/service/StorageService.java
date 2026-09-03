@@ -69,13 +69,37 @@ public class StorageService {
     private static final int PREVIEW_LEN = 100;
     private static final int SOURCE_SCAN_LIMIT = 1000;
     private static final double SOURCE_MIN_SCORE = 0.1;
-    private static final int LIST_SCAN_LIMIT = 10000;
+    private static final int LIST_SCAN_LIMIT = 10_000;
 
     // 默认集合
-    private static final String DEFAULT_COLLECTION = "tinyengine_documents";
+    private static final String DEFAULT_COLL = "tinyengine_documents";
 
     // 集合映射配置
     private final Map<String, String> collectionMapping = new HashMap<>();
+
+    private static void logDebug(final String message, final Object... arguments) {
+        if (log.isDebugEnabled()) {
+            log.debug(message, arguments);
+        }
+    }
+
+    private static void logInfo(final String message, final Object... arguments) {
+        if (log.isInfoEnabled()) {
+            log.info(message, arguments);
+        }
+    }
+
+    private static void logWarn(final String message, final Object... arguments) {
+        if (log.isWarnEnabled()) {
+            log.warn(message, arguments);
+        }
+    }
+
+    private static void logError(final String message, final Object... arguments) {
+        if (log.isErrorEnabled()) {
+            log.error(message, arguments);
+        }
+    }
 
     /** 支持的文档格式 */
     private static final List<String> SUPPORTED_FORMATS =
@@ -238,7 +262,7 @@ public class StorageService {
         this.embeddingModel = embeddingModel;
         this.embeddingStore = embeddingStore;
         this.ragConfig = ragConfig == null ? new RAGConfig() : ragConfig;
-        log.info(
+        logInfo(
                 "StorageService initialized with support for {} file formats",
                 SUPPORTED_FORMATS.size());
 
@@ -252,7 +276,7 @@ public class StorageService {
         collectionMapping.put("agent", "agent_documents");
         collectionMapping.put("tinyengine", "tinyengine_documents");
 
-        log.info("Collection mapping initialized: {}", collectionMapping);
+        logInfo("Collection mapping initialized: {}", collectionMapping);
     }
 
     /**
@@ -283,14 +307,14 @@ public class StorageService {
                                 + String.join(", ", SUPPORTED_FORMATS));
             }
 
-            log.info("Found {} supported files in folder: {}", filePaths.size(), folder);
+            logInfo("Found {} supported files in folder: {}", filePaths.size(), folder);
 
             return initializeKnowledgeBase(filePaths);
 
         } catch (ServiceException e) {
             throw e;
         } catch (Exception e) {
-            log.error("Failed to auto add folder to knowledge base", e);
+            logError("Failed to auto add folder to knowledge base", e);
             throw new ServiceException(
                     ExceptionEnum.CM330.getResultCode(),
                     "Auto add folder failed: " + e.getMessage());
@@ -307,13 +331,13 @@ public class StorageService {
             return pathStream
                     .filter(Files::isRegularFile)
                     .filter(this::isSupportedFormat)
-                    .peek(filePath -> log.debug("Found supported file: {}", filePath))
+                    .peek(filePath -> logDebug("Found supported file: {}", filePath))
                     .map(filePath -> filePath.toAbsolutePath().normalize().toString())
                     .sorted()
                     .collect(Collectors.toList());
 
         } catch (IOException e) {
-            log.error("Failed to scan folder: {}", folder, e);
+            logError("Failed to scan folder: {}", folder, e);
             throw new ServiceException(
                     ExceptionEnum.CM333.getResultCode(), ExceptionEnum.CM333.getResultMsg());
         }
@@ -326,13 +350,13 @@ public class StorageService {
      */
     private String determineCollectionName(String filePath, String customCollection) {
         // 如果指定了自定义集合，优先使用
-        if (customCollection != null && !customCollection.trim().isEmpty()) {
+        if (customCollection != null && !customCollection.isBlank()) {
             if (!isValidCollection(customCollection)) {
-                log.warn(
+                logWarn(
                         "Invalid collection specified: {}, using default: {}",
                         customCollection,
-                        DEFAULT_COLLECTION);
-                return DEFAULT_COLLECTION;
+                        DEFAULT_COLL);
+                return DEFAULT_COLL;
             }
             return customCollection;
         }
@@ -343,14 +367,14 @@ public class StorageService {
             // 如果路径包含特定关键词，映射到对应集合
             for (Map.Entry<String, String> entry : collectionMapping.entrySet()) {
                 if (lowerPath.contains(entry.getKey())) {
-                    log.info("Auto-mapped file {} to collection: {}", filePath, entry.getValue());
+                    logInfo("Auto-mapped file {} to collection: {}", filePath, entry.getValue());
                     return entry.getValue();
                 }
             }
         }
 
         // 默认集合
-        return DEFAULT_COLLECTION;
+        return DEFAULT_COLL;
     }
 
     /**
@@ -427,7 +451,7 @@ public class StorageService {
                     determineCollectionName(
                             documentPaths.isEmpty() ? null : documentPaths.get(0), collectionName);
 
-            log.info("Using collection: {} for document storage", targetCollection);
+            logInfo("Using collection: {} for document storage", targetCollection);
 
             List<Document> documents =
                     loadDocuments(documentPaths, documentSetId, targetCollection);
@@ -437,14 +461,14 @@ public class StorageService {
                         ExceptionEnum.CM329.getResultCode(), ExceptionEnum.CM329.getResultMsg());
             }
 
-            log.info(
+            logInfo(
                     "Successfully loaded {} documents for collection: {}",
                     documents.size(),
                     targetCollection);
 
             // 文档切分
             List<TextSegment> segments = splitDocuments(documents);
-            log.info(
+            logInfo(
                     "Generated {} text segments for collection: {}",
                     segments.size(),
                     targetCollection);
@@ -455,7 +479,7 @@ public class StorageService {
         } catch (ServiceException e) {
             throw e;
         } catch (Exception e) {
-            log.error("Failed to add the document to the knowledge base", e);
+            logError("Failed to add the document to the knowledge base", e);
             throw new ServiceException(
                     ExceptionEnum.CM330.getResultCode(), ExceptionEnum.CM330.getResultMsg());
         }
@@ -479,7 +503,7 @@ public class StorageService {
                 Path filePath = resolveDocumentPath(path, documentRoot);
                 // 检查文件是否存在
                 if (!Files.exists(filePath)) {
-                    log.warn("✗ File not found: {}", path);
+                    logWarn("✗ File not found: {}", path);
                     skippedCount++;
                     continue;
                 }
@@ -487,7 +511,7 @@ public class StorageService {
 
                 // 检查文件格式是否支持
                 if (!isSupportedFormat(filePath)) {
-                    log.warn(
+                    logWarn(
                             "✗ Unsupported document format: {} ({})",
                             path,
                             getFileFormatDescription(path));
@@ -507,7 +531,7 @@ public class StorageService {
                             FileSystemDocumentLoader.loadDocument(
                                     filePath, new TextDocumentParser());
                 } else {
-                    log.warn(
+                    logWarn(
                             "✗ Unhandled document format: {} ({})",
                             path,
                             getFileFormatDescription(path));
@@ -526,19 +550,19 @@ public class StorageService {
 
                 documents.add(document);
                 loadedCount++;
-                log.info(
+                logInfo(
                         "✓ Loaded document: {} ({}) to collection: {}",
                         filePath,
                         getFileFormatDescription(filePath.toString()),
                         collectionName);
 
             } catch (Exception e) {
-                log.error("✗ Failed to load the document: {} - {}", path, e.getMessage());
+                logError("✗ Failed to load the document: {} - {}", path, e.getMessage());
                 skippedCount++;
             }
         }
 
-        log.info(
+        logInfo(
                 "Document loading summary: {} loaded, {} skipped, {} total paths for collection:"
                         + " {}",
                 loadedCount,
@@ -566,7 +590,7 @@ public class StorageService {
      * @return vector storage result
      */
     private VectorDocument embedAndStore(List<TextSegment> segments, String collectionName) {
-        log.info("Begin vectorized storage to collection: {}...", collectionName);
+        logInfo("Begin vectorized storage to collection: {}...", collectionName);
         long startTime = System.currentTimeMillis();
 
         int successCount = 0;
@@ -584,7 +608,7 @@ public class StorageService {
         }
 
         long endTime = System.currentTimeMillis();
-        log.info(
+        logInfo(
                 "Vectorization completed in collection {}: {} successful, {} failed, time taken: {}"
                         + " ms",
                 collectionName,
@@ -617,7 +641,7 @@ public class StorageService {
                 successCount++;
 
                 if ((startIndex + i + 1) % LOG_INTERVAL == 0) {
-                    log.info(
+                    logInfo(
                             "Processed {}/{} text segments for collection: {}",
                             (startIndex + i + 1),
                             totalSize,
@@ -625,7 +649,7 @@ public class StorageService {
                 }
             } catch (Exception e) {
                 errorCount++;
-                log.error(
+                logError(
                         "Vectorization failed [{}] in collection {}: {}",
                         (startIndex + i + 1),
                         collectionName,
@@ -637,12 +661,12 @@ public class StorageService {
         if (!embeddings.isEmpty()) {
             try {
                 embeddingStore.addAll(embeddings, segmentsToStore);
-                log.debug(
+                logDebug(
                         "Successfully stored {} text segments to vector database in collection: {}",
                         embeddings.size(),
                         collectionName);
             } catch (Exception e) {
-                log.error(
+                logError(
                         "Batch storage to vector database failed in collection: {}",
                         collectionName,
                         e);
@@ -684,7 +708,7 @@ public class StorageService {
             List<EmbeddingMatchDto> results =
                     matches.stream().map(EmbeddingMatchDto::from).collect(Collectors.toList());
 
-            log.info(
+            logInfo(
                     "Retrieved {} related documents from collection: {}",
                     results.size(),
                     searchDto.getCollection() != null
@@ -693,7 +717,7 @@ public class StorageService {
             return results;
 
         } catch (Exception e) {
-            log.error("Retrieval failed", e);
+            logError("Retrieval failed", e);
             throw new ServiceException(
                     ExceptionEnum.CM331.getResultCode(), ExceptionEnum.CM331.getResultMsg());
         }
@@ -732,10 +756,10 @@ public class StorageService {
                 searchDto.setCollection(collection);
                 List<EmbeddingMatchDto> collectionResults = search(searchDto);
                 results.put(collection, collectionResults);
-                log.info(
+                logInfo(
                         "Found {} results in collection: {}", collectionResults.size(), collection);
             } catch (Exception e) {
-                log.warn("Search failed in collection: {}", collection, e);
+                logWarn("Search failed in collection: {}", collection, e);
                 results.put(collection, new ArrayList<>());
             }
         }
@@ -751,7 +775,7 @@ public class StorageService {
     public DeleteResult deleteByFilePath(String filePath, String collectionName) {
         try {
             String safeFilePath = resolveDocumentPath(filePath).toString();
-            log.info(
+            logInfo(
                     "Deleting documents by file path: {} from collection: {}",
                     safeFilePath,
                     collectionName != null ? collectionName : "all collections");
@@ -762,7 +786,7 @@ public class StorageService {
                     searchBySource(safeFilePath, collectionName);
 
             if (matches.isEmpty()) {
-                log.warn(
+                logWarn(
                         "No documents found for file path: {} in collection: {}",
                         safeFilePath,
                         collectionName != null ? collectionName : "any collection");
@@ -784,7 +808,7 @@ public class StorageService {
             }
 
             long endTime = System.currentTimeMillis();
-            log.info(
+            logInfo(
                     "Deleted {} vectors for file: {} from collection: {}, time taken: {} ms",
                     deletedCount,
                     safeFilePath,
@@ -796,7 +820,7 @@ public class StorageService {
         } catch (ServiceException e) {
             throw e;
         } catch (Exception e) {
-            log.error(
+            logError(
                     "Failed to delete documents by file path: {} from collection: {}",
                     filePath,
                     collectionName,
@@ -846,7 +870,7 @@ public class StorageService {
                     .collect(Collectors.toList());
 
         } catch (Exception e) {
-            log.error(
+            logError(
                     "Failed to search vectors by source: {} in collection: {}",
                     sourcePath,
                     collectionName,
@@ -871,7 +895,7 @@ public class StorageService {
      */
     public BatchDeleteResult deleteMultipleFiles(List<String> filePaths, String collectionName) {
         try {
-            log.info(
+            logInfo(
                     "Deleting multiple files: {} from collection: {}",
                     filePaths,
                     collectionName != null ? collectionName : "all collections");
@@ -890,7 +914,7 @@ public class StorageService {
                         totalFailed += result.getFailedCount();
                     }
                 } catch (Exception e) {
-                    log.error(
+                    logError(
                             "Failed to delete file: {} from collection: {}",
                             filePath,
                             collectionName,
@@ -901,7 +925,7 @@ public class StorageService {
             }
 
             long endTime = System.currentTimeMillis();
-            log.info(
+            logInfo(
                     "Batch deletion completed: {} deleted, {} failed, time taken: {} ms from"
                             + " collection: {}",
                     totalDeleted,
@@ -912,7 +936,7 @@ public class StorageService {
             return new BatchDeleteResult(totalDeleted, totalFailed, results);
 
         } catch (Exception e) {
-            log.error("Failed to delete multiple files from collection: {}", collectionName, e);
+            logError("Failed to delete multiple files from collection: {}", collectionName, e);
             throw new ServiceException(
                     ExceptionEnum.CM332.getResultCode(), "Batch delete files failed");
         }
@@ -934,11 +958,11 @@ public class StorageService {
                 }
             }
 
-            log.info("Retrieved documents from {} collections", collectionDocuments.size());
+            logInfo("Retrieved documents from {} collections", collectionDocuments.size());
             return collectionDocuments;
 
         } catch (Exception e) {
-            log.error("Failed to get collection documents", e);
+            logError("Failed to get collection documents", e);
             return collectionDocuments;
         }
     }
@@ -961,12 +985,12 @@ public class StorageService {
 
             result.put(collectionName, documents);
 
-            log.info(
+            logInfo(
                     "Retrieved {} documents from collection: {}", documents.size(), collectionName);
             return result;
 
         } catch (Exception e) {
-            log.error("Failed to get documents from collection: {}", collectionName, e);
+            logError("Failed to get documents from collection: {}", collectionName, e);
             return result;
         }
     }
@@ -1013,7 +1037,7 @@ public class StorageService {
                     .collect(Collectors.toList());
 
         } catch (Exception e) {
-            log.error("Failed to get stored files list for collection: {}", collectionName, e);
+            logError("Failed to get stored files list for collection: {}", collectionName, e);
             return new ArrayList<>();
         }
     }
@@ -1060,7 +1084,7 @@ public class StorageService {
                     .collect(Collectors.toList());
 
         } catch (Exception e) {
-            log.error("Failed to get document sets list for collection: {}", collectionName, e);
+            logError("Failed to get document sets list for collection: {}", collectionName, e);
             return new ArrayList<>();
         }
     }
@@ -1086,9 +1110,9 @@ public class StorageService {
             try {
                 List<String> files = getStoredFiles(collection);
                 stats.put(collection, files.size());
-                log.debug("Collection {} has {} files", collection, files.size());
+                logDebug("Collection {} has {} files", collection, files.size());
             } catch (Exception e) {
-                log.warn("Failed to get stats for collection: {}", collection, e);
+                logWarn("Failed to get stats for collection: {}", collection, e);
                 stats.put(collection, 0);
             }
         }
@@ -1111,9 +1135,9 @@ public class StorageService {
                 deleteMultipleFiles(files, collectionName);
             }
 
-            log.info("Collection cleared successfully: {}", collectionName);
+            logInfo("Collection cleared successfully: {}", collectionName);
         } catch (Exception e) {
-            log.error("Failed to clear collection: {}", collectionName, e);
+            logError("Failed to clear collection: {}", collectionName, e);
             throw new ServiceException(
                     ExceptionEnum.CM001.getResultCode(),
                     "Clear collection failed: " + collectionName);
@@ -1124,11 +1148,11 @@ public class StorageService {
     public void clearVectorStore() {
         try {
             embeddingStore.removeAll();
-            log.info("Vector store cleared successfully (all collections)");
+            logInfo("Vector store cleared successfully (all collections)");
 
-            log.info("Vector store cleared successfully (all collections)");
+            logInfo("Vector store cleared successfully (all collections)");
         } catch (Exception e) {
-            log.error("Failed to clear vector library", e);
+            logError("Failed to clear vector library", e);
             throw new ServiceException(
                     ExceptionEnum.CM001.getResultCode(), "Clear vector store failed");
         }

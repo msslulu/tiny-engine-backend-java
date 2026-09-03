@@ -2,6 +2,7 @@ package com.tinyengine.it.dynamic.service;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONException;
 import com.tinyengine.it.common.context.LoginUserContext;
 import com.tinyengine.it.common.exception.ExceptionEnum;
 import com.tinyengine.it.common.exception.ServiceException;
@@ -17,6 +18,7 @@ import com.tinyengine.it.service.material.ModelService;
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.context.annotation.Lazy;
+import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.PreparedStatementCreator;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -85,10 +87,12 @@ public class DynamicModelService {
             jdbcTemplate.execute(sql);
             log.info("createDynamicTable ok: {}", tableName);
 
-        } catch (Exception e) {
-            log.error("createDynamicTable failed: {}", tableName, e);
+        } catch (DataAccessException exception) {
+            log.error("createDynamicTable failed: {}", tableName, exception);
             throw new ServiceException(
-                    ExceptionEnum.CM001.getResultCode(), ExceptionEnum.CM001.getResultCode());
+                    ExceptionEnum.CM001.getResultCode(),
+                    ExceptionEnum.CM001.getResultCode(),
+                    exception);
         }
     }
 
@@ -112,10 +116,12 @@ public class DynamicModelService {
         try {
             jdbcTemplate.execute(sql);
             log.info("Successfully dropped table: {}", tableName);
-        } catch (Exception e) {
-            log.error("Failed to drop table: {}", tableName, e);
+        } catch (DataAccessException exception) {
+            log.error("Failed to drop table: {}", tableName, exception);
             throw new ServiceException(
-                    ExceptionEnum.CM001.getResultCode(), ExceptionEnum.CM001.getResultCode());
+                    ExceptionEnum.CM001.getResultCode(),
+                    ExceptionEnum.CM001.getResultCode(),
+                    exception);
         }
     }
 
@@ -410,8 +416,8 @@ public class DynamicModelService {
                 case "Enum" -> value; // Validation for enums should be handled before this
                 default -> value;
             };
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Invalid value for field: " + columnName, e);
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalArgumentException("Invalid value for field: " + columnName, exception);
         }
     }
 
@@ -592,15 +598,15 @@ public class DynamicModelService {
 
     private String getEnumOptions(String optionStr) {
         List<String> options = new ArrayList<>();
-        if (optionStr == null || optionStr.trim().isEmpty()) {
+        if (optionStr == null || optionStr.isBlank()) {
             throw new IllegalArgumentException("Enum options cannot be null or empty");
         }
         JSONArray jsonList;
         try {
             jsonList = JSON.parseArray(optionStr);
-        } catch (Exception e) {
+        } catch (JSONException exception) {
             throw new IllegalArgumentException(
-                    "Invalid enum options format, expected JSON array string", e);
+                    "Invalid enum options format, expected JSON array string", exception);
         }
         for (int i = 0; i < jsonList.size(); i++) {
             String value = jsonList.getJSONObject(i).getString("value");
@@ -684,7 +690,7 @@ public class DynamicModelService {
      * @return validated dynamic table name
      */
     private String getTableName(String modelId) {
-        if (modelId == null || modelId.trim().isEmpty()) {
+        if (modelId == null || modelId.isBlank()) {
             throw new IllegalArgumentException("Model name cannot be null or empty");
         }
         String tableName = "dynamic_" + modelId.toLowerCase(Locale.ROOT);
@@ -712,11 +718,7 @@ public class DynamicModelService {
 
         List<Map<String, Object>> results = jdbcTemplate.queryForList(sql, id);
 
-        if (results.isEmpty()) {
-            return null;
-        } else {
-            return results.get(0);
-        }
+        return results.isEmpty() ? Collections.emptyMap() : results.get(0);
     }
 
     public Map<String, Object> updateDateById(DynamicUpdate dto) {
@@ -728,7 +730,7 @@ public class DynamicModelService {
         if (dto.getData() == null || dto.getData().isEmpty()) {
             throw new IllegalArgumentException("更新操作必须指定更新数据");
         }
-        if (modelId == null || modelId.trim().isEmpty()) {
+        if (modelId == null || modelId.isBlank()) {
             throw new IllegalArgumentException("模型ID不能为空");
         }
         Long id = Long.parseLong(params1.get("id").toString());
@@ -759,7 +761,7 @@ public class DynamicModelService {
 
     public Map<String, Object> deleteDataById(DynamicDelete dto) {
         String modelId = dto.getNameEn();
-        if (modelId == null || modelId.trim().isEmpty()) {
+        if (modelId == null || modelId.isBlank()) {
             throw new IllegalArgumentException("模型ID不能为空");
         }
         if (dto.getId() == null) {

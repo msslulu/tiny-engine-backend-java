@@ -12,7 +12,7 @@ import java.util.Map;
 public class DynamicSqlProvider {
 
     private static final String COUNT_SELECT = "COUNT(*) AS count";
-    private static final String LEGACY_COUNT_SELECT = "COUNT(*) as count";
+    private static final String LEGACY_COUNT = "COUNT(*) as count";
     private static final String TABLE_NAME_PARAM = "tableName";
     private static final String CONDITIONS_PARAM = "conditions";
     private static final String DATA_PARAM = "data";
@@ -155,7 +155,7 @@ public class DynamicSqlProvider {
 
     private String getSelectField(final Object field) {
         if (field instanceof String
-                && LEGACY_COUNT_SELECT.equalsIgnoreCase(((String) field).trim())) {
+                && LEGACY_COUNT.equalsIgnoreCase(((String) field).trim())) {
             return COUNT_SELECT;
         }
         return requireIdentifier(field, "field");
@@ -184,7 +184,7 @@ public class DynamicSqlProvider {
     }
 
     private String getOrderType(final Object value) {
-        if (value == null || (value instanceof String && ((String) value).isEmpty())) {
+        if (value == null || value instanceof String stringValue && stringValue.isEmpty()) {
             return "ASC";
         }
         return SqlIdentifierValidator.requireValidOrderType(requireString(value, "orderType"));

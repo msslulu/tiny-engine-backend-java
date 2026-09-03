@@ -86,23 +86,18 @@ public class AiChatServiceImpl implements AiChatService {
         List<Map<String, Object>> choices = (List<Map<String, Object>>) data.get("choices");
         Map<String, String> message = (Map<String, String>) choices.get(0).get("message");
 
-        String answerContent = "";
-        String isFinish = "";
+        String finishReasonValue = "";
+        StringBuilder answerContent = new StringBuilder();
         Object finishReason = choices.get(0).get("finish_reason");
         if (finishReason instanceof String) {
-            isFinish = (String) finishReason;
+            finishReasonValue = (String) finishReason;
         }
-        if (!"length".equals(isFinish)) {
-            answerContent = message.get("content");
-        }
-
         // 若内容被截断，继续请求AI
-        while ("length".equals(isFinish)) {
+        while ("length".equals(finishReasonValue)) {
             String prefix = message.get("content");
-            answerContent = answerContent + prefix;
+            answerContent.append(prefix);
 
             // 将此部分内容加入消息列表
-            Map<String, Object> partialMessage = new HashMap<>();
             AiMessages aiMessages = new AiMessages();
             List<AiMessages> messagesList = aiParam.getMessages();
             aiMessages.setRole("assistant");
@@ -112,25 +107,18 @@ public class AiChatServiceImpl implements AiChatService {
             aiParam.setMessages(messagesList);
 
             // 再次请求AI
-            try {
-                data =
-                        requestAnswerFromAi(aiParam.getMessages(), aiParam.getFoundationModel())
-                                .getData();
-            } catch (Exception e) {
-                throw new ServiceException(ExceptionEnum.CM001.getResultCode(), e.getMessage());
-            }
+            data =
+                    requestAnswerFromAi(aiParam.getMessages(), aiParam.getFoundationModel())
+                            .getData();
             choices = (List<Map<String, Object>>) data.get("choices");
             message = (Map<String, String>) choices.get(0).get("message");
-            StringBuilder sb = new StringBuilder();
-            answerContent = String.valueOf(sb.append(message.get("content")));
             finishReason = choices.get(0).get("finish_reason");
             if (finishReason instanceof String) {
-                isFinish = (String) finishReason;
+                finishReasonValue = (String) finishReason;
             }
         }
-        // 通过二方包将页面转成schema
-        String codes = extractCode(answerContent);
-        Map<String, Object> result = buildResult(answerContent, message);
+        answerContent.append(message.get("content"));
+        Map<String, Object> result = buildResult(answerContent.toString(), message);
         return Result.success(result);
     }
 

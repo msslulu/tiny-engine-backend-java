@@ -101,13 +101,14 @@ public class VectorStoreConfig {
                 logInfo(
                         "Attempting to initialize ChromaDB connection: {}",
                         ragConfig.getChromaBaseUrl());
+                String collectionName = ragConfig.getChromaCollectionName();
+                if (collectionName == null) {
+                    collectionName = "documents";
+                }
                 embeddingStore =
                         ChromaEmbeddingStore.builder()
                                 .baseUrl(ragConfig.getChromaBaseUrl())
-                                .collectionName(
-                                        ragConfig.getChromaCollectionName() != null
-                                                ? ragConfig.getChromaCollectionName()
-                                                : "documents")
+                                .collectionName(collectionName)
                                 .timeout(Duration.ofSeconds(CHROMA_TIMEOUT))
                                 .build();
                 logInfo("ChromaDB embeddingStore initialization successful");

@@ -37,6 +37,7 @@ import org.springframework.util.CollectionUtils;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.StringJoiner;
 import java.util.stream.Collectors;
@@ -187,10 +188,12 @@ public class ModelServiceImpl extends ServiceImpl<ModelMapper, Model> implements
         }
         try {
             dynamicModelService.dropDynamicTable(model);
-        } catch (Exception e) {
-            log.error("deleteModelById", e);
+        } catch (ServiceException exception) {
+            log.error("deleteModelById", exception);
             throw new ServiceException(
-                    ExceptionEnum.CM001.getResultCode(), ExceptionEnum.CM001.getResultCode());
+                    ExceptionEnum.CM001.getResultCode(),
+                    ExceptionEnum.CM001.getResultCode(),
+                    exception);
         }
         return model;
     }
@@ -240,10 +243,12 @@ public class ModelServiceImpl extends ServiceImpl<ModelMapper, Model> implements
         // 修改动态表
         try {
             dynamicModelService.modifyTableStructure(model);
-        } catch (Exception e) {
-            log.error("updateModelById", e);
+        } catch (ServiceException exception) {
+            log.error("updateModelById", exception);
             throw new ServiceException(
-                    ExceptionEnum.CM001.getResultCode(), ExceptionEnum.CM001.getResultCode());
+                    ExceptionEnum.CM001.getResultCode(),
+                    ExceptionEnum.CM001.getResultCode(),
+                    exception);
         }
         Model modelResult = this.baseMapper.selectById(model.getId());
         return modelResult;
@@ -306,7 +311,7 @@ public class ModelServiceImpl extends ServiceImpl<ModelMapper, Model> implements
         if (!CollectionUtils.isEmpty(modelList)) {
             return modelList.stream().map(Model::getNameEn).collect(Collectors.toList());
         }
-        return null;
+        return Collections.emptyList();
     }
 
     private String getTableByModle(Model model) {

@@ -36,6 +36,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -76,6 +77,8 @@ public class AiChatV1ServiceImpl implements AiChatV1Service {
     private static final int IPV6_MULTICAST = 0xFF;
     private static final int IPV6_FOURTH_IDX = 3;
     private static final String EKEY_PREFIX = "EKEY_";
+    private static final Set<String> LOOPBACK_HOSTS =
+            Set.of("localhost", "127.0.0.1", "::1", "[::1]");
 
     private final OpenAIConfig config;
     private final HttpClient httpClient;
@@ -131,7 +134,7 @@ public class AiChatV1ServiceImpl implements AiChatV1Service {
      * @return token the token
      */
     @Override
-    public String getToken(String apiKey) throws Exception {
+    public String getToken(String apiKey) throws GeneralSecurityException {
         String sm4Key = System.getenv("SM4KEY");
         String encrypt = SM4Utils.encrypt(apiKey, sm4Key);
         return EKEY_PREFIX + encrypt;
@@ -143,22 +146,22 @@ public class AiChatV1ServiceImpl implements AiChatV1Service {
      * @return normalized API URL
      */
     private String normalizeApiUrl(String baseUrl) {
-        if (baseUrl == null || baseUrl.trim().isEmpty()) {
-            baseUrl = config.getBaseUrl();
-        }
-        baseUrl = baseUrl.trim();
+        final String configuredUrl =
+                baseUrl == null || baseUrl.isBlank() ? config.getBaseUrl() : baseUrl;
+        final String normalizedUrl = configuredUrl.trim();
 
-        if (baseUrl.contains("/chat/completions") || baseUrl.contains("/v1/chat/completions")) {
-            return ensureUrlProtocol(baseUrl);
+        if (normalizedUrl.contains("/chat/completions")
+                || normalizedUrl.contains("/v1/chat/completions")) {
+            return ensureUrlProtocol(normalizedUrl);
         }
 
-        if (baseUrl.contains("v1")) {
-            return ensureUrlProtocol(baseUrl) + "/chat/completions";
+        if (normalizedUrl.contains("v1")) {
+            return ensureUrlProtocol(normalizedUrl) + "/chat/completions";
         }
-        if (baseUrl.endsWith("#")) {
-            return ensureUrlProtocol(baseUrl);
+        if (normalizedUrl.endsWith("#")) {
+            return ensureUrlProtocol(normalizedUrl);
         } else {
-            return ensureUrlProtocol(baseUrl) + "/v1/chat/completions";
+            return ensureUrlProtocol(normalizedUrl) + "/v1/chat/completions";
         }
     }
 
@@ -228,45 +231,52 @@ public class AiChatV1ServiceImpl implements AiChatV1Service {
     }
 
     private JsonNode processStandardResponse(HttpRequest.Builder requestBuilder) {
-        HttpResponse<String> response = null;
-        String code = null;
-        String message = null;
         try {
-            response =
+            final HttpResponse<String> response =
                     httpClient.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
-            code = String.valueOf(response.statusCode());
+            final String code = String.valueOf(response.statusCode());
             if (response.statusCode() != HTTP_OK) {
-                String errorBody = response.body();
+                final String errorBody = response.body();
 
                 // 尝试解析错误JSON
-                JsonNode errorNode = JsonUtils.MAPPER.readTree(errorBody);
-                message = errorNode.get("error").get("message").asText();
+                final JsonNode errorNode = JsonUtils.MAPPER.readTree(errorBody);
+                final String message = errorNode.get("error").get("message").asText();
                 throw new ServiceException(code, message);
             }
             return JsonUtils.MAPPER.readTree(response.body());
-        } catch (IOException | InterruptedException e) {
-            throw new ServiceException(code, message);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new ServiceException("500", "AI request interrupted", exception);
+        } catch (IOException exception) {
+            throw new ServiceException("500", "AI request failed", exception);
         }
     }
 
     private StreamingResponseBody processStreamResponse(HttpRequest.Builder requestBuilder) {
         return outputStream -> {
-            HttpResponse<InputStream> response = null;
+            final HttpResponse<InputStream> response;
             try {
                 response =
                         httpClient.send(
                                 requestBuilder.build(), HttpResponse.BodyHandlers.ofInputStream());
-            } catch (InterruptedException e) {
-                throw new ServiceException("500", e.getMessage());
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+                throw new ServiceException("500", "AI request interrupted", exception);
+            } catch (IOException exception) {
+                throw new ServiceException("500", "AI request failed", exception);
             }
 
-            log.info("Received AI API response, status code {}", response.statusCode());
+            if (log.isInfoEnabled()) {
+                log.info("Received AI API response, status code {}", response.statusCode());
+            }
 
             if (response.statusCode() != HTTP_OK) {
                 String errorBody =
                         new String(response.body().readAllBytes(), StandardCharsets.UTF_8);
 
-                log.info("errorBody: {}", errorBody);
+                if (log.isInfoEnabled()) {
+                    log.info("errorBody: {}", errorBody);
+                }
 
                 JsonNode errorNode = JsonUtils.MAPPER.readTree(errorBody);
                 throw new ServiceException(
@@ -277,17 +287,15 @@ public class AiChatV1ServiceImpl implements AiChatV1Service {
             // 正常流处理逻辑
             try (InputStream inputStream = response.body()) {
                 byte[] buffer = new byte[STREAM_BUF_SIZE];
-                int bytesRead;
-                while ((bytesRead = inputStream.read(buffer)) != -1) {
+                int bytesRead = inputStream.read(buffer);
+                while (bytesRead != -1) {
                     outputStream.write(buffer, 0, bytesRead);
                     outputStream.flush();
+                    bytesRead = inputStream.read(buffer);
                 }
             }
         };
     }
-
-    private static final Set<String> LOOPBACK_HOSTS =
-            Set.of("localhost", "127.0.0.1", "::1", "[::1]");
 
     URI validateFinalUrl(String finalUrl) {
         URI uri;
@@ -413,12 +421,12 @@ public class AiChatV1ServiceImpl implements AiChatV1Service {
         return uniqueLocal || documentation || first == IPV6_MULTICAST;
     }
 
-    private String getApiKey(String encryptApiKey) throws Exception {
+    private String getApiKey(String encryptApiKey) throws GeneralSecurityException {
         String sm4Key = System.getenv("SM4KEY");
 
         if (encryptApiKey.startsWith(EKEY_PREFIX)) {
-            String encryptBase64ApiKey = encryptApiKey.substring(EKEY_PREFIX.length());
-            return SM4Utils.decrypt(encryptBase64ApiKey, sm4Key);
+            String encodedApiKey = encryptApiKey.substring(EKEY_PREFIX.length());
+            return SM4Utils.decrypt(encodedApiKey, sm4Key);
         }
         return encryptApiKey;
     }

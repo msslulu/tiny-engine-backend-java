@@ -36,13 +36,15 @@ public class DynamicService {
     private static final Set<String> SYSTEM_FIELDS =
             Set.of("id", "created_at", "updated_at", "deleted_at", "created_by", "updated_by");
     private static final int DEFAULT_PAGE_SIZE = 10;
+    private static final String TABLE_NAME_KEY = "tableName";
+    private static final String CONDITIONS_KEY = "conditions";
 
     public List<JSONObject> query(DynamicQuery dto) {
         String tableName = getTableName(dto.getNameEn());
         Map<String, Object> params = new HashMap<>();
-        params.put("tableName", tableName);
+        params.put(TABLE_NAME_KEY, tableName);
         params.put("fields", dto.getFields());
-        params.put("conditions", dto.getParams());
+        params.put(CONDITIONS_KEY, dto.getParams());
         params.put("pageNum", dto.getCurrentPage());
         params.put("pageSize", dto.getPageSize());
         params.put("orderBy", dto.getOrderBy());
@@ -53,16 +55,16 @@ public class DynamicService {
 
     public Long count(String tableName, Map<String, Object> conditions) {
         Map<String, Object> params = new HashMap<>();
-        params.put("tableName", tableName);
+        params.put(TABLE_NAME_KEY, tableName);
         params.put("fields", Arrays.asList("COUNT(*) as count"));
-        params.put("conditions", conditions);
+        params.put(CONDITIONS_KEY, conditions);
 
         List<JSONObject> result = dynamicDao.select(params);
         return Long.parseLong(result.get(0).get("count").toString());
     }
 
     public Map<String, Object> queryWithPage(DynamicQuery dto) {
-        if (dto.getNameEn() == null || dto.getNameEn().trim().isEmpty()) {
+        if (dto.getNameEn() == null || dto.getNameEn().isBlank()) {
             throw new IllegalArgumentException("查询操作必须指定模型名称");
         }
         if (dto.getCurrentPage() == null || dto.getCurrentPage() <= 0) {
@@ -90,7 +92,7 @@ public class DynamicService {
 
     @Transactional
     public Map<String, Object> insert(DynamicInsert dto) {
-        if (dto.getNameEn() == null || dto.getNameEn().trim().isEmpty()) {
+        if (dto.getNameEn() == null || dto.getNameEn().isBlank()) {
             throw new IllegalArgumentException("插入操作必须指定模型名称");
         }
         if (dto.getParams() == null || dto.getParams().isEmpty()) {
@@ -100,11 +102,11 @@ public class DynamicService {
         validateTableAndData(dto.getNameEn(), dto.getParams());
         String tableName = getTableName(dto.getNameEn());
         Map<String, Object> params = new HashMap<>();
-        params.put("tableName", tableName);
+        params.put(TABLE_NAME_KEY, tableName);
         params.put("data", dto.getParams());
 
         String userId = loginUserContext.getLoginUserId();
-        if (userId == null || userId.trim().isEmpty()) {
+        if (userId == null || userId.isBlank()) {
             List<Model> modelList = modelService.getModelByEnName(dto.getNameEn());
             if (modelList.isEmpty()) {
                 throw new IllegalArgumentException("模型不存在: " + dto.getNameEn());
@@ -126,7 +128,7 @@ public class DynamicService {
 
     @Transactional
     public Map<String, Object> update(DynamicUpdate dto) {
-        if (dto.getNameEn() == null || dto.getNameEn().trim().isEmpty()) {
+        if (dto.getNameEn() == null || dto.getNameEn().isBlank()) {
             throw new IllegalArgumentException("更新操作必须指定模型名称");
         }
         if (dto.getParams() == null || dto.getParams().isEmpty()) {
@@ -140,9 +142,9 @@ public class DynamicService {
         validateTableAndData(dto.getNameEn(), dto.getParams());
         String tableName = getTableName(dto.getNameEn());
         Map<String, Object> params = new HashMap<>();
-        params.put("tableName", tableName);
+        params.put(TABLE_NAME_KEY, tableName);
         params.put("data", dto.getData());
-        params.put("conditions", dto.getParams());
+        params.put(CONDITIONS_KEY, dto.getParams());
         Map<String, Object> result = new HashMap<>();
         Integer update = dynamicDao.update(params);
         result.put("update", update);
@@ -151,7 +153,7 @@ public class DynamicService {
 
     @Transactional
     public Map<String, Object> delete(DynamicDelete dto) {
-        if (dto.getNameEn() == null || dto.getNameEn().trim().isEmpty()) {
+        if (dto.getNameEn() == null || dto.getNameEn().isBlank()) {
             throw new IllegalArgumentException("删除操作必须指定模型名称");
         }
         if (dto.getId() == null) {
@@ -163,8 +165,8 @@ public class DynamicService {
         Map<String, Object> params = new HashMap<>();
         Map<Object, Object> conditions = new HashMap<>();
         conditions.put("id", dto.getId());
-        params.put("tableName", tableName);
-        params.put("conditions", conditions);
+        params.put(TABLE_NAME_KEY, tableName);
+        params.put(CONDITIONS_KEY, conditions);
         Map<String, Object> result = new HashMap<>();
         Integer delete = dynamicDao.delete(params);
         result.put("delete", delete);
@@ -259,7 +261,7 @@ public class DynamicService {
     }
 
     private String getTableName(String modelId) {
-        if (modelId == null || modelId.trim().isEmpty()) {
+        if (modelId == null || modelId.isBlank()) {
             throw new IllegalArgumentException("模型名称不能为空");
         }
         String tableName = "dynamic_" + modelId.toLowerCase(Locale.ROOT);
