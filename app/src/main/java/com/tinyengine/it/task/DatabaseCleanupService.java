@@ -147,15 +147,18 @@ public class DatabaseCleanupService {
     }
 
     private static String createExecutionId() {
-        final UUID executionUuid = UUID.randomUUID();
-        final String uuidValue = executionUuid.toString();
-        return uuidValue.substring(0, EXEC_ID_LENGTH);
+        final String fullUuid = UUID.randomUUID().toString();
+        return truncateUuid(fullUuid);
+    }
+
+    private static String truncateUuid(String uuid) {
+        return uuid.substring(0, EXEC_ID_LENGTH);
     }
 
     private static String currentTime() {
         final ZoneId systemZone = ZoneId.systemDefault();
         final LocalDateTime currentDateTime = LocalDateTime.now(systemZone);
-        return currentDateTime.format(FORMATTER);
+        return FORMATTER.format(currentDateTime);  // 调用静态常量，传入参数
     }
 
     private void cleanTable(
@@ -186,13 +189,15 @@ public class DatabaseCleanupService {
     }
 
     private long clearTable(final String tableName) {
+        long result;   // 存储最终返回值
         if (!cleanupProperties.isUseTruncate()) {
-            return clearTableData(tableName);
+            result = clearTableData(tableName);
+        } else {
+            final long recordCount = getTableRecordCount(tableName);
+            truncateTable(tableName);
+            result = recordCount;
         }
-
-        final long recordCount = getTableRecordCount(tableName);
-        truncateTable(tableName);
-        return recordCount;
+        return result;   // 唯一的返回语句
     }
 
     /**
@@ -219,17 +224,18 @@ public class DatabaseCleanupService {
      * @return whether the table exists
      */
     public boolean tableExists(final String tableName) {
+        boolean exists = false;
         try {
             final String sql =
-                    "SELECT COUNT(*) FROM information_schema.tables "
-                            + "WHERE table_schema = DATABASE() AND table_name = ?";
+                "SELECT COUNT(*) FROM information_schema.tables "
+                    + "WHERE table_schema = DATABASE() AND table_name = ?";
             final Integer count =
-                    jdbcTemplate.queryForObject(sql, Integer.class, tableName.toUpperCase(Locale.ROOT));
-            return count != null && count > 0;
+                jdbcTemplate.queryForObject(sql, Integer.class, tableName.toUpperCase(Locale.ROOT));
+            exists = count != null && count > 0;
         } catch (DataAccessException | IllegalArgumentException exception) {
             logWarn("The checklist has failed: {}", exception.getMessage());
-            return false;
         }
+        return exists;
     }
 
     /**
@@ -238,15 +244,17 @@ public class DatabaseCleanupService {
      * @return record count in the table
      */
     public long getTableRecordCount(final String tableName) {
+        long result;   // 存储返回值
         try {
             validateTableName(tableName);
             final String sql = "SELECT COUNT(*) FROM " + tableName;
             final Long count = jdbcTemplate.queryForObject(sql, Long.class);
-            return count != null ? count : 0;
+            result = (count != null) ? count : 0;
         } catch (DataAccessException | IllegalArgumentException exception) {
             logError("获取表记录数失败: {}", exception.getMessage());
-            return -1;
+            result = -1;   // 异常时返回 -1
         }
+        return result;   // 唯一的退出点
     }
 
     /** 验证表名安全性 */
@@ -372,12 +380,13 @@ public class DatabaseCleanupService {
         }
 
         public long getDurationSeconds() {
+            long result = 0;  // 默认值对应 startTime 或 endTime 为空的情况
             if (startTime != null && endTime != null) {
-                LocalDateTime start = LocalDateTime.parse(startTime, FORMATTER);
-                LocalDateTime end = LocalDateTime.parse(endTime, FORMATTER);
-                return java.time.Duration.between(start, end).getSeconds();
+                final LocalDateTime start = LocalDateTime.parse(startTime, FORMATTER);
+                final LocalDateTime end = LocalDateTime.parse(endTime, FORMATTER);
+                result = java.time.Duration.between(start, end).getSeconds();
             }
-            return 0;
+            return result;  // 唯一的退出点
         }
     }
 
