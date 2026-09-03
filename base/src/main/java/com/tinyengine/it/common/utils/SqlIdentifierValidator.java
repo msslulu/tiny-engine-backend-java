@@ -2,9 +2,10 @@ package com.tinyengine.it.common.utils;
 
 import java.util.List;
 
-public class SqlIdentifierValidator {
+public final class SqlIdentifierValidator {
 
     private SqlIdentifierValidator() {
+        // Utility class.
     }
 
     public static void validate(String identifier) {
@@ -61,9 +62,7 @@ public class SqlIdentifierValidator {
         if (value == null) {
             return null;
         }
-        return value.toString()
-                .replace("\\", "\\\\")
-                .replace("'", "''");
+        return value.toString().replace("\\", "\\\\").replace("'", "''");
     }
 
     private static boolean isIdentifierStart(char c) {

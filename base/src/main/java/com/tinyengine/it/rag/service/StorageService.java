@@ -1,26 +1,25 @@
 /**
- * Copyright (c) 2023 - present TinyEngine Authors.
- * Copyright (c) 2023 - present Huawei Cloud Computing Technologies Co., Ltd.
+ * Copyright (c) 2023 - present TinyEngine Authors. Copyright (c) 2023 - present Huawei Cloud
+ * Computing Technologies Co., Ltd.
  *
- * Use of this source code is governed by an MIT-style license.
+ * <p>Use of this source code is governed by an MIT-style license.
  *
- * THE OPEN SOURCE SOFTWARE IN THIS PRODUCT IS DISTRIBUTED IN THE HOPE THAT IT WILL BE USEFUL,
- * BUT WITHOUT ANY WARRANTY, WITHOUT EVEN THE IMPLIED WARRANTY OF MERCHANTABILITY OR FITNESS FOR
- * A PARTICULAR PURPOSE. SEE THE APPLICABLE LICENSES FOR MORE DETAILS.
- *
+ * <p>THE OPEN SOURCE SOFTWARE IN THIS PRODUCT IS DISTRIBUTED IN THE HOPE THAT IT WILL BE USEFUL,
+ * BUT WITHOUT ANY WARRANTY, WITHOUT EVEN THE IMPLIED WARRANTY OF MERCHANTABILITY OR FITNESS FOR A
+ * PARTICULAR PURPOSE. SEE THE APPLICABLE LICENSES FOR MORE DETAILS.
  */
-
 package com.tinyengine.it.rag.service;
 
 import com.tinyengine.it.common.exception.ExceptionEnum;
 import com.tinyengine.it.common.exception.ServiceException;
+import com.tinyengine.it.rag.config.RAGConfig;
 import com.tinyengine.it.rag.entity.BatchDeleteResult;
 import com.tinyengine.it.rag.entity.BatchResult;
 import com.tinyengine.it.rag.entity.DeleteResult;
 import com.tinyengine.it.rag.entity.EmbeddingMatchDto;
-import com.tinyengine.it.rag.config.RAGConfig;
 import com.tinyengine.it.rag.entity.SearchRequest;
 import com.tinyengine.it.rag.entity.VectorDocument;
+
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.document.loader.FileSystemDocumentLoader;
@@ -33,13 +32,15 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+
 import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
-import java.nio.file.InvalidPathException;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -51,9 +52,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-/**
- * 存储服务 - 支持动态集合管理
- */
+/** 存储服务 - 支持动态集合管理 */
 @Slf4j
 @Service
 public class StorageService {
@@ -63,10 +62,14 @@ public class StorageService {
     private final RAGConfig ragConfig;
 
     // 支持的集合列表
-    private static final List<String> SUPPORTED_COLLECTIONS = List.of(
-        "tinyengine_documents",
-        "agent_documents"
-    );
+    private static final List<String> VALID_COLLECTIONS =
+            List.of("tinyengine_documents", "agent_documents");
+    private static final int STORE_BATCH_SIZE = 50;
+    private static final int LOG_INTERVAL = 100;
+    private static final int PREVIEW_LEN = 100;
+    private static final int SOURCE_SCAN_LIMIT = 1000;
+    private static final double SOURCE_MIN_SCORE = 0.1;
+    private static final int LIST_SCAN_LIMIT = 10000;
 
     // 默认集合
     private static final String DEFAULT_COLLECTION = "tinyengine_documents";
@@ -74,26 +77,86 @@ public class StorageService {
     // 集合映射配置
     private final Map<String, String> collectionMapping = new HashMap<>();
 
-    /**
-     * 支持的文档格式
-     */
-    private static final List<String> SUPPORTED_FORMATS = List.of(
-        ".pdf", ".txt", ".md", ".sql", ".java", ".py", ".js", ".ts",
-        ".html", ".css", ".xml", ".json", ".yaml", ".yml", ".properties",
-        ".sh", ".bat", ".cmd", ".c", ".cpp", ".h", ".hpp"
-    );
+    /** 支持的文档格式 */
+    private static final List<String> SUPPORTED_FORMATS =
+            List.of(
+                    ".pdf",
+                    ".txt",
+                    ".md",
+                    ".sql",
+                    ".java",
+                    ".py",
+                    ".js",
+                    ".ts",
+                    ".html",
+                    ".css",
+                    ".xml",
+                    ".json",
+                    ".yaml",
+                    ".yml",
+                    ".properties",
+                    ".sh",
+                    ".bat",
+                    ".cmd",
+                    ".c",
+                    ".cpp",
+                    ".h",
+                    ".hpp");
+
+    /** 文本文件格式（使用 TextDocumentParser） */
+    private static final List<String> TEXT_FORMATS =
+            List.of(
+                    ".txt",
+                    ".md",
+                    ".sql",
+                    ".java",
+                    ".py",
+                    ".js",
+                    ".ts",
+                    ".html",
+                    ".css",
+                    ".xml",
+                    ".json",
+                    ".yaml",
+                    ".yml",
+                    ".properties",
+                    ".sh",
+                    ".bat",
+                    ".cmd",
+                    ".c",
+                    ".cpp",
+                    ".h",
+                    ".hpp");
+
+    private static final Map<String, String> FORMAT_DESC =
+            Map.ofEntries(
+                    Map.entry(".pdf", "PDF Document"),
+                    Map.entry(".sql", "SQL Script"),
+                    Map.entry(".java", "Java Source"),
+                    Map.entry(".py", "Python Script"),
+                    Map.entry(".js", "JavaScript"),
+                    Map.entry(".ts", "TypeScript"),
+                    Map.entry(".html", "HTML Document"),
+                    Map.entry(".css", "CSS Stylesheet"),
+                    Map.entry(".xml", "XML Document"),
+                    Map.entry(".json", "JSON Data"),
+                    Map.entry(".yaml", "YAML Configuration"),
+                    Map.entry(".yml", "YAML Configuration"),
+                    Map.entry(".properties", "Properties File"),
+                    Map.entry(".sh", "Shell Script"),
+                    Map.entry(".bat", "Batch File"),
+                    Map.entry(".cmd", "Batch File"),
+                    Map.entry(".c", "C Source"),
+                    Map.entry(".cpp", "C++ Source"),
+                    Map.entry(".h", "C++ Source"),
+                    Map.entry(".hpp", "C++ Source"),
+                    Map.entry(".txt", "Text Document"),
+                    Map.entry(".md", "Markdown Document"));
 
     /**
-     * 文本文件格式（使用 TextDocumentParser）
-     */
-    private static final List<String> TEXT_FORMATS = List.of(
-        ".txt", ".md", ".sql", ".java", ".py", ".js", ".ts",
-        ".html", ".css", ".xml", ".json", ".yaml", ".yml", ".properties",
-        ".sh", ".bat", ".cmd", ".c", ".cpp", ".h", ".hpp"
-    );
-
-    /**
-     * Check if file format is supported
+     * Check if file format is supported.
+     *
+     * @return whether the file format is supported
      */
     private boolean isSupportedFormat(Path filePath) {
         String fileName = filePath.getFileName().toString().toLowerCase(Locale.ROOT);
@@ -103,17 +166,21 @@ public class StorageService {
     Path getDocumentRoot() {
         String rootPath = ragConfig.getDocumentRoot();
         if (rootPath == null || rootPath.isBlank()) {
-            throw new ServiceException(ExceptionEnum.CM329.getResultCode(), "Document root is not configured");
+            throw new ServiceException(
+                    ExceptionEnum.CM329.getResultCode(), "Document root is not configured");
         }
 
         try {
             Path root = Paths.get(rootPath).toAbsolutePath().normalize();
             if (!Files.exists(root) || !Files.isDirectory(root)) {
-                throw new ServiceException(ExceptionEnum.CM329.getResultCode(), "Document root does not exist: " + root);
+                throw new ServiceException(
+                        ExceptionEnum.CM329.getResultCode(),
+                        "Document root does not exist: " + root);
             }
             return root.toRealPath();
         } catch (InvalidPathException | IOException e) {
-            throw new ServiceException(ExceptionEnum.CM329.getResultCode(), "Invalid document root: " + rootPath);
+            throw new ServiceException(
+                    ExceptionEnum.CM329.getResultCode(), "Invalid document root: " + rootPath);
         }
     }
 
@@ -123,21 +190,26 @@ public class StorageService {
 
     Path resolveDocumentPath(String rawPath, Path documentRoot) {
         if (rawPath == null || rawPath.isBlank()) {
-            throw new ServiceException(ExceptionEnum.CM329.getResultCode(), "Document path cannot be empty");
+            throw new ServiceException(
+                    ExceptionEnum.CM329.getResultCode(), "Document path cannot be empty");
         }
 
         try {
             Path root = documentRoot.toAbsolutePath().normalize();
             Path requested = Paths.get(rawPath);
-            Path resolved = requested.isAbsolute()
-                ? requested.toAbsolutePath().normalize()
-                : root.resolve(requested).normalize();
+            Path resolved =
+                    requested.isAbsolute()
+                            ? requested.toAbsolutePath().normalize()
+                            : root.resolve(requested).normalize();
             if (!resolved.startsWith(root)) {
-                throw new ServiceException(ExceptionEnum.CM329.getResultCode(), "Document path is outside the allowed root");
+                throw new ServiceException(
+                        ExceptionEnum.CM329.getResultCode(),
+                        "Document path is outside the allowed root");
             }
             return resolved;
         } catch (InvalidPathException e) {
-            throw new ServiceException(ExceptionEnum.CM329.getResultCode(), "Invalid document path");
+            throw new ServiceException(
+                    ExceptionEnum.CM329.getResultCode(), "Invalid document path");
         }
     }
 
@@ -145,32 +217,36 @@ public class StorageService {
         Path root = documentRoot.toRealPath();
         Path realPath = filePath.toRealPath();
         if (!realPath.startsWith(root)) {
-            throw new ServiceException(ExceptionEnum.CM329.getResultCode(), "Document path is outside the allowed root");
+            throw new ServiceException(
+                    ExceptionEnum.CM329.getResultCode(),
+                    "Document path is outside the allowed root");
         }
         return realPath;
     }
 
-    /**
-     * 构造函数
-     */
-    public StorageService(EmbeddingModel embeddingModel, EmbeddingStore<TextSegment> embeddingStore) {
+    /** 构造函数 */
+    public StorageService(
+            EmbeddingModel embeddingModel, EmbeddingStore<TextSegment> embeddingStore) {
         this(embeddingModel, embeddingStore, new RAGConfig());
     }
 
     @Autowired
-    public StorageService(EmbeddingModel embeddingModel, EmbeddingStore<TextSegment> embeddingStore, RAGConfig ragConfig) {
+    public StorageService(
+            EmbeddingModel embeddingModel,
+            EmbeddingStore<TextSegment> embeddingStore,
+            RAGConfig ragConfig) {
         this.embeddingModel = embeddingModel;
         this.embeddingStore = embeddingStore;
         this.ragConfig = ragConfig == null ? new RAGConfig() : ragConfig;
-        log.info("StorageService initialized with support for {} file formats", SUPPORTED_FORMATS.size());
+        log.info(
+                "StorageService initialized with support for {} file formats",
+                SUPPORTED_FORMATS.size());
 
         // 初始化集合映射
         initializeCollectionMapping();
     }
 
-    /**
-     * 初始化集合映射配置
-     */
+    /** 初始化集合映射配置 */
     private void initializeCollectionMapping() {
         // 配置特定文件类型到集合的映射
         collectionMapping.put("agent", "agent_documents");
@@ -180,14 +256,18 @@ public class StorageService {
     }
 
     /**
-     * 检查集合名称是否有效
+     * 检查集合名称是否有效.
+     *
+     * @return whether the collection name is valid
      */
     private boolean isValidCollection(String collectionName) {
-        return SUPPORTED_COLLECTIONS.contains(collectionName);
+        return VALID_COLLECTIONS.contains(collectionName);
     }
 
     /**
-     * 自动扫描文件夹并添加文档到知识库
+     * 自动扫描文件夹并添加文档到知识库.
+     *
+     * @return vector storage result
      */
     public VectorDocument autoAddFolderToKnowledgeBase() {
         try {
@@ -197,9 +277,10 @@ public class StorageService {
             List<String> filePaths = scanSupportedFiles(folder);
 
             if (filePaths.isEmpty()) {
-                throw new ServiceException(ExceptionEnum.CM329.getResultCode(),
-                    "No supported file formats found in folder. Supported formats: " + String.join(", ",
-                         SUPPORTED_FORMATS));
+                throw new ServiceException(
+                        ExceptionEnum.CM329.getResultCode(),
+                        "No supported file formats found in folder. Supported formats: "
+                                + String.join(", ", SUPPORTED_FORMATS));
             }
 
             log.info("Found {} supported files in folder: {}", filePaths.size(), folder);
@@ -210,12 +291,16 @@ public class StorageService {
             throw e;
         } catch (Exception e) {
             log.error("Failed to auto add folder to knowledge base", e);
-            throw new ServiceException(ExceptionEnum.CM330.getResultCode(), "Auto add folder failed: " + e.getMessage());
+            throw new ServiceException(
+                    ExceptionEnum.CM330.getResultCode(),
+                    "Auto add folder failed: " + e.getMessage());
         }
     }
 
     /**
-     * 扫描文件夹中所有支持的文件
+     * 扫描文件夹中所有支持的文件.
+     *
+     * @return supported file paths
      */
     private List<String> scanSupportedFiles(Path folder) {
         try (Stream<Path> pathStream = Files.walk(folder)) {
@@ -229,20 +314,24 @@ public class StorageService {
 
         } catch (IOException e) {
             log.error("Failed to scan folder: {}", folder, e);
-            throw new ServiceException(ExceptionEnum.CM333.getResultCode(), ExceptionEnum.CM333.getResultMsg());
+            throw new ServiceException(
+                    ExceptionEnum.CM333.getResultCode(), ExceptionEnum.CM333.getResultMsg());
         }
     }
 
-
-
     /**
-     * 根据文档路径和自定义集合确定目标集合
+     * 根据文档路径和自定义集合确定目标集合.
+     *
+     * @return target collection name
      */
     private String determineCollectionName(String filePath, String customCollection) {
         // 如果指定了自定义集合，优先使用
         if (customCollection != null && !customCollection.trim().isEmpty()) {
             if (!isValidCollection(customCollection)) {
-                log.warn("Invalid collection specified: {}, using default: {}", customCollection, DEFAULT_COLLECTION);
+                log.warn(
+                        "Invalid collection specified: {}, using default: {}",
+                        customCollection,
+                        DEFAULT_COLLECTION);
                 return DEFAULT_COLLECTION;
             }
             return customCollection;
@@ -265,7 +354,9 @@ public class StorageService {
     }
 
     /**
-     * 检查文件格式是否支持
+     * 检查文件格式是否支持.
+     *
+     * @return whether the file format is supported
      */
     private boolean isSupportedFormat(String filePath) {
         if (filePath == null) {
@@ -277,7 +368,9 @@ public class StorageService {
     }
 
     /**
-     * 检查是否为文本格式
+     * 检查是否为文本格式.
+     *
+     * @return whether the file is text format
      */
     private boolean isTextFormat(String filePath) {
         if (filePath == null) {
@@ -289,106 +382,72 @@ public class StorageService {
     }
 
     /**
-     * 获取文件格式描述
+     * 获取文件格式描述.
+     *
+     * @return file format description
      */
     private String getFileFormatDescription(String filePath) {
-        if (filePath == null) {
-            return "unknown";
+        String description = "unknown";
+        if (filePath != null) {
+            description = "Unknown Format";
+            String lowerPath = filePath.toLowerCase(Locale.ROOT);
+            for (Map.Entry<String, String> entry : FORMAT_DESC.entrySet()) {
+                if (lowerPath.endsWith(entry.getKey())) {
+                    description = entry.getValue();
+                    break;
+                }
+            }
         }
-
-        String lowerPath = filePath.toLowerCase(Locale.ROOT);
-        if (lowerPath.endsWith(".pdf")) {
-            return "PDF Document";
-        }
-        if (lowerPath.endsWith(".sql")) {
-            return "SQL Script";
-        }
-        if (lowerPath.endsWith(".java")) {
-            return "Java Source";
-        }
-        if (lowerPath.endsWith(".py")) {
-            return "Python Script";
-        }
-        if (lowerPath.endsWith(".js")) {
-            return "JavaScript";
-        }
-        if (lowerPath.endsWith(".ts")) {
-            return "TypeScript";
-        }
-        if (lowerPath.endsWith(".html")) {
-            return "HTML Document";
-        }
-        if (lowerPath.endsWith(".css")) {
-            return "CSS Stylesheet";
-        }
-        if (lowerPath.endsWith(".xml")) {
-            return "XML Document";
-        }
-        if (lowerPath.endsWith(".json")) {
-            return "JSON Data";
-        }
-        if (lowerPath.endsWith(".yaml") || lowerPath.endsWith(".yml")) {
-            return "YAML Configuration";
-        }
-        if (lowerPath.endsWith(".properties")) {
-            return "Properties File";
-        }
-        if (lowerPath.endsWith(".sh")) {
-            return "Shell Script";
-        }
-        if (lowerPath.endsWith(".bat") || lowerPath.endsWith(".cmd")) {
-            return "Batch File";
-        }
-        if (lowerPath.endsWith(".c")) {
-            return "C Source";
-        }
-        if (lowerPath.endsWith(".cpp") || lowerPath.endsWith(".h") || lowerPath.endsWith(".hpp")) {
-            return "C++ Source";
-        }
-        if (lowerPath.endsWith(".txt")) {
-            return "Text Document";
-        }
-        if (lowerPath.endsWith(".md")) {
-            return "Markdown Document";
-        }
-
-        return "Unknown Format";
+        return description;
     }
 
     /**
-     * 添加文档到知识库（默认集合）
+     * 添加文档到知识库（默认集合）.
+     *
+     * @return vector storage result
      */
     public VectorDocument initializeKnowledgeBase(List<String> documentPaths) {
         return initializeKnowledgeBase(documentPaths, null, null);
     }
 
     /**
-     * 添加文档到知识库（指定集合）
+     * 添加文档到知识库（指定集合）.
+     *
+     * @return vector storage result
      */
-    public VectorDocument initializeKnowledgeBase(List<String> documentPaths, String documentSetId, String collectionName) {
+    public VectorDocument initializeKnowledgeBase(
+            List<String> documentPaths, String documentSetId, String collectionName) {
         try {
             if (documentPaths == null || documentPaths.isEmpty()) {
-                throw new ServiceException(ExceptionEnum.CM329.getResultCode(), ExceptionEnum.CM329.getResultMsg());
+                throw new ServiceException(
+                        ExceptionEnum.CM329.getResultCode(), ExceptionEnum.CM329.getResultMsg());
             }
             // 确定目标集合
-            String targetCollection = determineCollectionName(
-                documentPaths.isEmpty() ? null : documentPaths.get(0),
-                collectionName
-            );
+            String targetCollection =
+                    determineCollectionName(
+                            documentPaths.isEmpty() ? null : documentPaths.get(0), collectionName);
 
             log.info("Using collection: {} for document storage", targetCollection);
 
-            List<Document> documents = loadDocuments(documentPaths, documentSetId, targetCollection);
+            List<Document> documents =
+                    loadDocuments(documentPaths, documentSetId, targetCollection);
 
             if (documents.isEmpty()) {
-                throw new ServiceException(ExceptionEnum.CM329.getResultCode(), ExceptionEnum.CM329.getResultMsg());
+                throw new ServiceException(
+                        ExceptionEnum.CM329.getResultCode(), ExceptionEnum.CM329.getResultMsg());
             }
 
-            log.info("Successfully loaded {} documents for collection: {}", documents.size(), targetCollection);
+            log.info(
+                    "Successfully loaded {} documents for collection: {}",
+                    documents.size(),
+                    targetCollection);
 
             // 文档切分
             List<TextSegment> segments = splitDocuments(documents);
-            log.info("Generated {} text segments for collection: {}", segments.size(), targetCollection);
+            log.info(
+                    "Generated {} text segments for collection: {}",
+                    segments.size(),
+                    targetCollection);
 
             // 向量化并存储到指定集合
             return embedAndStore(segments, targetCollection);
@@ -397,14 +456,18 @@ public class StorageService {
             throw e;
         } catch (Exception e) {
             log.error("Failed to add the document to the knowledge base", e);
-            throw new ServiceException(ExceptionEnum.CM330.getResultCode(), ExceptionEnum.CM330.getResultMsg());
+            throw new ServiceException(
+                    ExceptionEnum.CM330.getResultCode(), ExceptionEnum.CM330.getResultMsg());
         }
     }
 
     /**
-     * 加载文档
+     * 加载文档.
+     *
+     * @return loaded documents
      */
-    private List<Document> loadDocuments(List<String> documentPaths, String documentSetId, String collectionName) {
+    private List<Document> loadDocuments(
+            List<String> documentPaths, String documentSetId, String collectionName) {
         List<Document> documents = new ArrayList<>();
         Path documentRoot = getDocumentRoot();
 
@@ -424,7 +487,10 @@ public class StorageService {
 
                 // 检查文件格式是否支持
                 if (!isSupportedFormat(filePath)) {
-                    log.warn("✗ Unsupported document format: {} ({})", path, getFileFormatDescription(path));
+                    log.warn(
+                            "✗ Unsupported document format: {} ({})",
+                            path,
+                            getFileFormatDescription(path));
                     skippedCount++;
                     continue;
                 }
@@ -437,9 +503,14 @@ public class StorageService {
                     document = FileSystemDocumentLoader.loadDocument(filePath, pdfParser);
                 } else if (isTextFormat(filePath.toString())) {
                     // 所有文本文件使用 TextDocumentParser
-                    document = FileSystemDocumentLoader.loadDocument(filePath, new TextDocumentParser());
+                    document =
+                            FileSystemDocumentLoader.loadDocument(
+                                    filePath, new TextDocumentParser());
                 } else {
-                    log.warn("✗ Unhandled document format: {} ({})", path, getFileFormatDescription(path));
+                    log.warn(
+                            "✗ Unhandled document format: {} ({})",
+                            path,
+                            getFileFormatDescription(path));
                     skippedCount++;
                     continue;
                 }
@@ -455,8 +526,11 @@ public class StorageService {
 
                 documents.add(document);
                 loadedCount++;
-                log.info("✓ Loaded document: {} ({}) to collection: {}",
-                    filePath, getFileFormatDescription(filePath.toString()), collectionName);
+                log.info(
+                        "✓ Loaded document: {} ({}) to collection: {}",
+                        filePath,
+                        getFileFormatDescription(filePath.toString()),
+                        collectionName);
 
             } catch (Exception e) {
                 log.error("✗ Failed to load the document: {} - {}", path, e.getMessage());
@@ -464,25 +538,32 @@ public class StorageService {
             }
         }
 
-        log.info("Document loading summary: {} loaded, {} skipped, {} total paths for collection: {}",
-            loadedCount, skippedCount, documentPaths.size(), collectionName);
+        log.info(
+                "Document loading summary: {} loaded, {} skipped, {} total paths for collection:"
+                        + " {}",
+                loadedCount,
+                skippedCount,
+                documentPaths.size(),
+                collectionName);
 
         return documents;
     }
 
     /**
-     * 文档切分
+     * 文档切分.
+     *
+     * @return text segments
      */
     private List<TextSegment> splitDocuments(List<Document> documents) {
-        DocumentSplitter splitter = DocumentSplitters.recursive(
-            ragConfig.getChunkSize(),
-            ragConfig.getChunkOverlap()
-        );
+        DocumentSplitter splitter =
+                DocumentSplitters.recursive(ragConfig.getChunkSize(), ragConfig.getChunkOverlap());
         return splitter.splitAll(documents);
     }
 
     /**
-     * 向量化并存储到指定集合
+     * 向量化并存储到指定集合.
+     *
+     * @return vector storage result
      */
     private VectorDocument embedAndStore(List<TextSegment> segments, String collectionName) {
         log.info("Begin vectorized storage to collection: {}...", collectionName);
@@ -492,7 +573,7 @@ public class StorageService {
         int errorCount = 0;
 
         // 批量处理，提高性能
-        int batchSize = 50;
+        int batchSize = STORE_BATCH_SIZE;
         for (int i = 0; i < segments.size(); i += batchSize) {
             int end = Math.min(i + batchSize, segments.size());
             List<TextSegment> batch = segments.subList(i, end);
@@ -503,16 +584,24 @@ public class StorageService {
         }
 
         long endTime = System.currentTimeMillis();
-        log.info("Vectorization completed in collection {}: {} successful, {} failed, time taken: {} ms",
-            collectionName, successCount, errorCount, (endTime - startTime));
+        log.info(
+                "Vectorization completed in collection {}: {} successful, {} failed, time taken: {}"
+                        + " ms",
+                collectionName,
+                successCount,
+                errorCount,
+                (endTime - startTime));
 
         return new VectorDocument(successCount, errorCount, null, collectionName);
     }
 
     /**
-     * 处理批次数据
+     * 处理批次数据.
+     *
+     * @return batch processing result
      */
-    private BatchResult processBatch(List<TextSegment> batch, int startIndex, int totalSize, String collectionName) {
+    private BatchResult processBatch(
+            List<TextSegment> batch, int startIndex, int totalSize, String collectionName) {
         int successCount = 0;
         int errorCount = 0;
 
@@ -527,25 +616,36 @@ public class StorageService {
                 segmentsToStore.add(segment);
                 successCount++;
 
-                if ((startIndex + i + 1) % 100 == 0) {
-                    log.info("Processed {}/{} text segments for collection: {}",
-                        (startIndex + i + 1), totalSize, collectionName);
+                if ((startIndex + i + 1) % LOG_INTERVAL == 0) {
+                    log.info(
+                            "Processed {}/{} text segments for collection: {}",
+                            (startIndex + i + 1),
+                            totalSize,
+                            collectionName);
                 }
             } catch (Exception e) {
                 errorCount++;
-                log.error("Vectorization failed [{}] in collection {}: {}",
-                    (startIndex + i + 1), collectionName,
-                    segment.text().substring(0, Math.min(100, segment.text().length())));
+                log.error(
+                        "Vectorization failed [{}] in collection {}: {}",
+                        (startIndex + i + 1),
+                        collectionName,
+                        segment.text()
+                                .substring(0, Math.min(PREVIEW_LEN, segment.text().length())));
             }
         }
 
         if (!embeddings.isEmpty()) {
             try {
                 embeddingStore.addAll(embeddings, segmentsToStore);
-                log.debug("Successfully stored {} text segments to vector database in collection: {}",
-                    embeddings.size(), collectionName);
+                log.debug(
+                        "Successfully stored {} text segments to vector database in collection: {}",
+                        embeddings.size(),
+                        collectionName);
             } catch (Exception e) {
-                log.error("Batch storage to vector database failed in collection: {}", collectionName, e);
+                log.error(
+                        "Batch storage to vector database failed in collection: {}",
+                        collectionName,
+                        e);
                 errorCount += embeddings.size();
                 successCount -= embeddings.size();
             }
@@ -557,19 +657,23 @@ public class StorageService {
     }
 
     /**
-     * 在指定集合中检索
+     * 在指定集合中检索.
+     *
+     * @return matched embedding results
      */
     public List<EmbeddingMatchDto> search(SearchRequest searchDto) {
         try {
             Embedding queryEmbedding = embeddingModel.embed(searchDto.getContent()).content();
 
-            EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
-                .queryEmbedding(queryEmbedding)
-                .maxResults(searchDto.getMaxResults())
-                .minScore(searchDto.getMinScore())
-                .build();
+            EmbeddingSearchRequest searchRequest =
+                    EmbeddingSearchRequest.builder()
+                            .queryEmbedding(queryEmbedding)
+                            .maxResults(searchDto.getMaxResults())
+                            .minScore(searchDto.getMinScore())
+                            .build();
 
-            List<EmbeddingMatch<TextSegment>> matches = embeddingStore.search(searchRequest).matches();
+            List<EmbeddingMatch<TextSegment>> matches =
+                    embeddingStore.search(searchRequest).matches();
 
             // 如果指定了集合名称，进行过滤
             if (searchDto.getCollection() != null) {
@@ -577,25 +681,31 @@ public class StorageService {
             }
 
             // 转换为 DTO
-            List<EmbeddingMatchDto> results = matches.stream()
-                .map(EmbeddingMatchDto::from)
-                .collect(Collectors.toList());
+            List<EmbeddingMatchDto> results =
+                    matches.stream().map(EmbeddingMatchDto::from).collect(Collectors.toList());
 
-            log.info("Retrieved {} related documents from collection: {}", results.size(),
-                searchDto.getCollection() != null ? searchDto.getCollection() : "all collections");
+            log.info(
+                    "Retrieved {} related documents from collection: {}",
+                    results.size(),
+                    searchDto.getCollection() != null
+                            ? searchDto.getCollection()
+                            : "all collections");
             return results;
 
         } catch (Exception e) {
             log.error("Retrieval failed", e);
-            throw new ServiceException(ExceptionEnum.CM331.getResultCode(), ExceptionEnum.CM331.getResultMsg());
+            throw new ServiceException(
+                    ExceptionEnum.CM331.getResultCode(), ExceptionEnum.CM331.getResultMsg());
         }
     }
 
     /**
-     * 根据集合名称过滤结果
+     * 根据集合名称过滤结果.
+     *
+     * @return filtered embedding results
      */
     private static List<EmbeddingMatch<TextSegment>> filterByCollection(
-        List<EmbeddingMatch<TextSegment>> results, String collectionName) {
+            List<EmbeddingMatch<TextSegment>> results, String collectionName) {
 
         List<EmbeddingMatch<TextSegment>> filteredResults = new ArrayList<>();
 
@@ -610,17 +720,20 @@ public class StorageService {
     }
 
     /**
-     * 跨集合搜索（在所有集合中搜索）
+     * 跨集合搜索（在所有集合中搜索）.
+     *
+     * @return search results grouped by collection
      */
     public Map<String, List<EmbeddingMatchDto>> searchAcrossCollections(SearchRequest searchDto) {
         Map<String, List<EmbeddingMatchDto>> results = new HashMap<>();
 
-        for (String collection : SUPPORTED_COLLECTIONS) {
+        for (String collection : VALID_COLLECTIONS) {
             try {
                 searchDto.setCollection(collection);
                 List<EmbeddingMatchDto> collectionResults = search(searchDto);
                 results.put(collection, collectionResults);
-                log.info("Found {} results in collection: {}", collectionResults.size(), collection);
+                log.info(
+                        "Found {} results in collection: {}", collectionResults.size(), collection);
             } catch (Exception e) {
                 log.warn("Search failed in collection: {}", collection, e);
                 results.put(collection, new ArrayList<>());
@@ -631,29 +744,37 @@ public class StorageService {
     }
 
     /**
-     * 根据文件路径删除指定集合中的文档
+     * 根据文件路径删除指定集合中的文档.
+     *
+     * @return delete result
      */
     public DeleteResult deleteByFilePath(String filePath, String collectionName) {
         try {
             String safeFilePath = resolveDocumentPath(filePath).toString();
-            log.info("Deleting documents by file path: {} from collection: {}",
-                safeFilePath, collectionName != null ? collectionName : "all collections");
+            log.info(
+                    "Deleting documents by file path: {} from collection: {}",
+                    safeFilePath,
+                    collectionName != null ? collectionName : "all collections");
             long startTime = System.currentTimeMillis();
 
             // 搜索包含该文件路径的所有向量
-            List<EmbeddingMatch<TextSegment>> matches = searchBySource(safeFilePath, collectionName);
+            List<EmbeddingMatch<TextSegment>> matches =
+                    searchBySource(safeFilePath, collectionName);
 
             if (matches.isEmpty()) {
-                log.warn("No documents found for file path: {} in collection: {}",
-                    safeFilePath, collectionName != null ? collectionName : "any collection");
+                log.warn(
+                        "No documents found for file path: {} in collection: {}",
+                        safeFilePath,
+                        collectionName != null ? collectionName : "any collection");
                 return new DeleteResult(0, 0, safeFilePath);
             }
 
             // 提取要删除的向量ID
-            List<String> idsToRemove = matches.stream()
-                .map(EmbeddingMatch::embeddingId)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
+            List<String> idsToRemove =
+                    matches.stream()
+                            .map(EmbeddingMatch::embeddingId)
+                            .filter(Objects::nonNull)
+                            .collect(Collectors.toList());
 
             int deletedCount = 0;
             if (!idsToRemove.isEmpty()) {
@@ -663,70 +784,96 @@ public class StorageService {
             }
 
             long endTime = System.currentTimeMillis();
-            log.info("Deleted {} vectors for file: {} from collection: {}, time taken: {} ms",
-                deletedCount, safeFilePath, collectionName != null ? collectionName : "all collections",
-                (endTime - startTime));
+            log.info(
+                    "Deleted {} vectors for file: {} from collection: {}, time taken: {} ms",
+                    deletedCount,
+                    safeFilePath,
+                    collectionName != null ? collectionName : "all collections",
+                    (endTime - startTime));
 
             return new DeleteResult(deletedCount, 0, safeFilePath);
 
         } catch (ServiceException e) {
             throw e;
         } catch (Exception e) {
-            log.error("Failed to delete documents by file path: {} from collection: {}",
-                filePath, collectionName, e);
-            throw new ServiceException(ExceptionEnum.CM332.getResultCode(), "Delete document failed");
+            log.error(
+                    "Failed to delete documents by file path: {} from collection: {}",
+                    filePath,
+                    collectionName,
+                    e);
+            throw new ServiceException(
+                    ExceptionEnum.CM332.getResultCode(), "Delete document failed");
         }
     }
 
     /**
-     * 根据源文件路径搜索向量（支持集合过滤）
+     * 根据源文件路径搜索向量（支持集合过滤）.
+     *
+     * @return matched vectors for the source path
      */
-    private List<EmbeddingMatch<TextSegment>> searchBySource(String sourcePath, String collectionName) {
+    private List<EmbeddingMatch<TextSegment>> searchBySource(
+            String sourcePath, String collectionName) {
         try {
             // 使用更合理的查询文本
             String queryText = "document content analysis";
 
-            EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
-                    .queryEmbedding(embeddingModel.embed(queryText).content())
-                    .maxResults(1000)
-                    .minScore(0.1)
-                    .build();
+            EmbeddingSearchRequest searchRequest =
+                    EmbeddingSearchRequest.builder()
+                            .queryEmbedding(embeddingModel.embed(queryText).content())
+                            .maxResults(SOURCE_SCAN_LIMIT)
+                            .minScore(SOURCE_MIN_SCORE)
+                            .build();
 
-            List<EmbeddingMatch<TextSegment>> allMatches = embeddingStore.search(searchRequest).matches();
+            List<EmbeddingMatch<TextSegment>> allMatches =
+                    embeddingStore.search(searchRequest).matches();
 
             // 在应用层过滤
             return allMatches.stream()
-                    .filter(match -> {
-                        String source = match.embedded().metadata().getString("source");
-                        String collection = match.embedded().metadata().getString("collection");
+                    .filter(
+                            match -> {
+                                String source = match.embedded().metadata().getString("source");
+                                String collection =
+                                        match.embedded().metadata().getString("collection");
 
-                        boolean sourceMatch = source != null && source.equals(sourcePath);
-                        boolean collectionMatch = collectionName == null ||
-                                (collection != null && collection.equals(collectionName));
+                                boolean sourceMatch = source != null && source.equals(sourcePath);
+                                boolean collectionMatch =
+                                        collectionName == null
+                                                || (collection != null
+                                                        && collection.equals(collectionName));
 
-                        return sourceMatch && collectionMatch;
-                    })
+                                return sourceMatch && collectionMatch;
+                            })
                     .collect(Collectors.toList());
 
         } catch (Exception e) {
-            log.error("Failed to search vectors by source: {} in collection: {}", sourcePath, collectionName, e);
+            log.error(
+                    "Failed to search vectors by source: {} in collection: {}",
+                    sourcePath,
+                    collectionName,
+                    e);
             return new ArrayList<>();
         }
     }
 
     /**
-     * 批量删除多个文件（默认集合）
+     * 批量删除多个文件（默认集合）.
+     *
+     * @return batch delete result
      */
     public BatchDeleteResult deleteMultipleFiles(List<String> filePaths) {
         return deleteMultipleFiles(filePaths, null);
     }
 
     /**
-     * 批量删除多个文件（指定集合）
+     * 批量删除多个文件（指定集合）.
+     *
+     * @return batch delete result
      */
     public BatchDeleteResult deleteMultipleFiles(List<String> filePaths, String collectionName) {
         try {
-            log.info("Deleting multiple files: {} from collection: {}", filePaths,
+            log.info(
+                    "Deleting multiple files: {} from collection: {}",
+                    filePaths,
                     collectionName != null ? collectionName : "all collections");
             long startTime = System.currentTimeMillis();
 
@@ -743,33 +890,44 @@ public class StorageService {
                         totalFailed += result.getFailedCount();
                     }
                 } catch (Exception e) {
-                    log.error("Failed to delete file: {} from collection: {}", filePath, collectionName, e);
+                    log.error(
+                            "Failed to delete file: {} from collection: {}",
+                            filePath,
+                            collectionName,
+                            e);
                     totalFailed++;
                     results.add(new DeleteResult(0, 1, filePath));
                 }
             }
 
             long endTime = System.currentTimeMillis();
-            log.info("Batch deletion completed: {} deleted, {} failed, time taken: {} ms from collection: {}",
-                totalDeleted, totalFailed, (endTime - startTime),
-                collectionName != null ? collectionName : "all collections");
+            log.info(
+                    "Batch deletion completed: {} deleted, {} failed, time taken: {} ms from"
+                            + " collection: {}",
+                    totalDeleted,
+                    totalFailed,
+                    (endTime - startTime),
+                    collectionName != null ? collectionName : "all collections");
 
             return new BatchDeleteResult(totalDeleted, totalFailed, results);
 
         } catch (Exception e) {
             log.error("Failed to delete multiple files from collection: {}", collectionName, e);
-            throw new ServiceException(ExceptionEnum.CM332.getResultCode(), "Batch delete files failed");
+            throw new ServiceException(
+                    ExceptionEnum.CM332.getResultCode(), "Batch delete files failed");
         }
     }
 
     /**
-     * 获取所有集合及其包含的文档路径
+     * 获取所有集合及其包含的文档路径.
+     *
+     * @return documents grouped by collection
      */
     public Map<String, List<String>> getAllCollectionDocuments() {
         Map<String, List<String>> collectionDocuments = new HashMap<>();
         try {
             // 遍历所有支持的集合
-            for (String collection : SUPPORTED_COLLECTIONS) {
+            for (String collection : VALID_COLLECTIONS) {
                 List<String> documents = getStoredFiles(collection);
                 if (!documents.isEmpty()) {
                     collectionDocuments.put(collection, documents);
@@ -786,20 +944,25 @@ public class StorageService {
     }
 
     /**
-     * 获取指定集合的文档路径
+     * 获取指定集合的文档路径.
+     *
+     * @return documents in the collection
      */
     public Map<String, List<String>> getCollectionDocuments(String collectionName) {
         Map<String, List<String>> result = new HashMap<>();
         try {
             if (!isValidCollection(collectionName)) {
-                throw new ServiceException(ExceptionEnum.CM001.getResultCode(), "Invalid collection name: " + collectionName);
+                throw new ServiceException(
+                        ExceptionEnum.CM001.getResultCode(),
+                        "Invalid collection name: " + collectionName);
             }
 
             List<String> documents = getStoredFiles(collectionName);
 
             result.put(collectionName, documents);
 
-            log.info("Retrieved {} documents from collection: {}", documents.size(), collectionName);
+            log.info(
+                    "Retrieved {} documents from collection: {}", documents.size(), collectionName);
             return result;
 
         } catch (Exception e) {
@@ -809,32 +972,41 @@ public class StorageService {
     }
 
     /**
-     * 获取所有已存储的文件列表（支持集合过滤）
+     * 获取所有已存储的文件列表（支持集合过滤）.
+     *
+     * @return stored file paths
      */
     public List<String> getStoredFiles() {
         return getStoredFiles(null);
     }
 
     /**
-     * 获取指定集合中已存储的文件列表
+     * 获取指定集合中已存储的文件列表.
+     *
+     * @return stored file paths
      */
     public List<String> getStoredFiles(String collectionName) {
         try {
-            EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
-                .queryEmbedding(embeddingModel.embed("test").content())
-                .maxResults(10000)
-                .minScore(0.0)
-                .build();
+            EmbeddingSearchRequest searchRequest =
+                    EmbeddingSearchRequest.builder()
+                            .queryEmbedding(embeddingModel.embed("test").content())
+                            .maxResults(LIST_SCAN_LIMIT)
+                            .minScore(0.0)
+                            .build();
 
-            List<EmbeddingMatch<TextSegment>> allMatches = embeddingStore.search(searchRequest).matches();
+            List<EmbeddingMatch<TextSegment>> allMatches =
+                    embeddingStore.search(searchRequest).matches();
 
             // 提取所有唯一的源文件路径（支持集合过滤）
             return allMatches.stream()
-                .filter(match -> {
-                    String collection = match.embedded().metadata().getString("collection");
-                    return collectionName == null ||
-                                (collection != null && collection.equals(collectionName));
-                })
+                    .filter(
+                            match -> {
+                                String collection =
+                                        match.embedded().metadata().getString("collection");
+                                return collectionName == null
+                                        || (collection != null
+                                                && collection.equals(collectionName));
+                            })
                     .map(match -> match.embedded().metadata().getString("source"))
                     .filter(Objects::nonNull)
                     .distinct()
@@ -846,34 +1018,42 @@ public class StorageService {
         }
     }
 
-
     /**
-     * 获取文档集列表（支持集合过滤）
+     * 获取文档集列表（支持集合过滤）.
+     *
+     * @return stored document set identifiers
      */
     public List<String> getDocumentSets() {
         return getDocumentSets(null);
     }
 
     /**
-     * 获取指定集合中的文档集列表
+     * 获取指定集合中的文档集列表.
+     *
+     * @return stored document set identifiers
      */
     public List<String> getDocumentSets(String collectionName) {
         try {
-            EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
-                .queryEmbedding(embeddingModel.embed("test").content())
-                .maxResults(10000)
-                .minScore(0.0)
-                .build();
+            EmbeddingSearchRequest searchRequest =
+                    EmbeddingSearchRequest.builder()
+                            .queryEmbedding(embeddingModel.embed("test").content())
+                            .maxResults(LIST_SCAN_LIMIT)
+                            .minScore(0.0)
+                            .build();
 
-            List<EmbeddingMatch<TextSegment>> allMatches = embeddingStore.search(searchRequest).matches();
+            List<EmbeddingMatch<TextSegment>> allMatches =
+                    embeddingStore.search(searchRequest).matches();
 
             // 提取所有唯一的文档集ID（支持集合过滤）
             return allMatches.stream()
-                .filter(match -> {
-                    String collection = match.embedded().metadata().getString("collection");
-                    return collectionName == null ||
-                        (collection != null && collection.equals(collectionName));
-                })
+                    .filter(
+                            match -> {
+                                String collection =
+                                        match.embedded().metadata().getString("collection");
+                                return collectionName == null
+                                        || (collection != null
+                                                && collection.equals(collectionName));
+                            })
                     .map(match -> match.embedded().metadata().getString("documentSetId"))
                     .filter(Objects::nonNull)
                     .distinct()
@@ -886,19 +1066,23 @@ public class StorageService {
     }
 
     /**
-     * 获取支持的集合列表
+     * 获取支持的集合列表.
+     *
+     * @return supported collection names
      */
     public List<String> getSupportedCollections() {
-        return new ArrayList<>(SUPPORTED_COLLECTIONS);
+        return new ArrayList<>(VALID_COLLECTIONS);
     }
 
     /**
-     * 获取集合统计信息
+     * 获取集合统计信息.
+     *
+     * @return collection statistics
      */
     public Map<String, Integer> getCollectionStats() {
         Map<String, Integer> stats = new HashMap<>();
 
-        for (String collection : SUPPORTED_COLLECTIONS) {
+        for (String collection : VALID_COLLECTIONS) {
             try {
                 List<String> files = getStoredFiles(collection);
                 stats.put(collection, files.size());
@@ -912,13 +1096,13 @@ public class StorageService {
         return stats;
     }
 
-    /**
-     * 清空指定集合
-     */
+    /** 清空指定集合 */
     public void clearCollection(String collectionName) {
         try {
             if (!isValidCollection(collectionName)) {
-                throw new ServiceException(ExceptionEnum.CM001.getResultCode(), "Invalid collection name: " + collectionName);
+                throw new ServiceException(
+                        ExceptionEnum.CM001.getResultCode(),
+                        "Invalid collection name: " + collectionName);
             }
 
             // 获取该集合中的所有文档并删除
@@ -930,13 +1114,13 @@ public class StorageService {
             log.info("Collection cleared successfully: {}", collectionName);
         } catch (Exception e) {
             log.error("Failed to clear collection: {}", collectionName, e);
-            throw new ServiceException(ExceptionEnum.CM001.getResultCode(), "Clear collection failed: " + collectionName);
+            throw new ServiceException(
+                    ExceptionEnum.CM001.getResultCode(),
+                    "Clear collection failed: " + collectionName);
         }
     }
 
-    /**
-     * 清空向量库（所有集合）
-     */
+    /** 清空向量库（所有集合） */
     public void clearVectorStore() {
         try {
             embeddingStore.removeAll();
@@ -945,9 +1129,8 @@ public class StorageService {
             log.info("Vector store cleared successfully (all collections)");
         } catch (Exception e) {
             log.error("Failed to clear vector library", e);
-            throw new ServiceException(ExceptionEnum.CM001.getResultCode(), "Clear vector store failed");
+            throw new ServiceException(
+                    ExceptionEnum.CM001.getResultCode(), "Clear vector store failed");
         }
     }
-
 }
-

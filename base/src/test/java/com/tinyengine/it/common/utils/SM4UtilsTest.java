@@ -1,14 +1,15 @@
 package com.tinyengine.it.common.utils;
 
-import org.junit.jupiter.api.Test;
-
-import java.util.Base64;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import org.junit.jupiter.api.Test;
+
+import java.util.Base64;
+
 class SM4UtilsTest {
+    private static final int SHORT_KEY_LEN = 8;
 
     @Test
     void encryptAndDecryptRoundTrip() throws Exception {
@@ -31,7 +32,7 @@ class SM4UtilsTest {
 
     @Test
     void rejectsInvalidKeyLength() {
-        String invalidKey = Base64.getEncoder().encodeToString(new byte[8]);
+        String invalidKey = Base64.getEncoder().encodeToString(new byte[SHORT_KEY_LEN]);
 
         assertThrows(IllegalArgumentException.class, () -> SM4Utils.encrypt("secret", invalidKey));
     }

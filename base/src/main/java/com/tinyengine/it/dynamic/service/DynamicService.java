@@ -4,29 +4,38 @@ import com.alibaba.fastjson.JSONObject;
 import com.tinyengine.it.common.context.LoginUserContext;
 import com.tinyengine.it.common.utils.SqlIdentifierValidator;
 import com.tinyengine.it.dynamic.dao.ModelDataDao;
-import com.tinyengine.it.dynamic.dto.*;
+import com.tinyengine.it.dynamic.dto.DynamicDelete;
+import com.tinyengine.it.dynamic.dto.DynamicInsert;
+import com.tinyengine.it.dynamic.dto.DynamicQuery;
+import com.tinyengine.it.dynamic.dto.DynamicUpdate;
 import com.tinyengine.it.model.dto.ParametersDto;
 import com.tinyengine.it.model.entity.Model;
 import com.tinyengine.it.service.material.ModelService;
+
 import jakarta.transaction.Transactional;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.math.BigInteger;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 
 @Service
 public class DynamicService {
-    @Autowired
-    private ModelDataDao dynamicDao;
-    @Autowired
-    private ModelService modelService;
-    @Autowired
-    private LoginUserContext loginUserContext;
+    @Autowired private ModelDataDao dynamicDao;
+    @Autowired private ModelService modelService;
+    @Autowired private LoginUserContext loginUserContext;
 
-    private static final Set<String> SYSTEM_FIELDS = Set.of(
-            "id", "created_at", "updated_at", "deleted_at", "created_by", "updated_by"
-    );
+    private static final Set<String> SYSTEM_FIELDS =
+            Set.of("id", "created_at", "updated_at", "deleted_at", "created_by", "updated_by");
+    private static final int DEFAULT_PAGE_SIZE = 10;
 
     public List<JSONObject> query(DynamicQuery dto) {
         String tableName = getTableName(dto.getNameEn());
@@ -60,7 +69,7 @@ public class DynamicService {
             dto.setCurrentPage(1);
         }
         if (dto.getPageSize() == null || dto.getPageSize() <= 0) {
-            dto.setPageSize(10);
+            dto.setPageSize(DEFAULT_PAGE_SIZE);
         }
         validateTableExists(dto.getNameEn());
         validateConditionKeys(dto.getParams());

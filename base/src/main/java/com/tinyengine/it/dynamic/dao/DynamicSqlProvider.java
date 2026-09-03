@@ -1,6 +1,7 @@
 package com.tinyengine.it.dynamic.dao;
 
 import com.tinyengine.it.common.utils.SqlIdentifierValidator;
+
 import org.apache.ibatis.jdbc.SQL;
 
 import java.util.ArrayList;
@@ -144,7 +145,8 @@ public class DynamicSqlProvider {
     }
 
     private String getSelectField(Object field) {
-        if (field instanceof String && COUNT_SELECT_LEGACY.equalsIgnoreCase(((String) field).trim())) {
+        if (field instanceof String
+                && COUNT_SELECT_LEGACY.equalsIgnoreCase(((String) field).trim())) {
             return COUNT_SELECT;
         }
         return requireIdentifier(field, "field");

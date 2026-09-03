@@ -1,9 +1,13 @@
 package com.tinyengine.it.service.material.impl;
 
+import static org.mockito.Mockito.when;
+
 import cn.hutool.core.util.ReflectUtil;
+
 import com.tinyengine.it.mapper.ModelMapper;
 import com.tinyengine.it.model.dto.ParametersDto;
 import com.tinyengine.it.model.entity.Model;
+
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,15 +18,11 @@ import org.mockito.MockitoAnnotations;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.mockito.Mockito.when;
-
 class ModelServiceImplTest {
 
-    @Mock
-    private ModelMapper modelMapper;
+    @Mock private ModelMapper modelMapper;
 
-    @InjectMocks
-    private ModelServiceImpl modelServiceImpl;
+    @InjectMocks private ModelServiceImpl modelServiceImpl;
 
     @BeforeEach
     void setUp() {

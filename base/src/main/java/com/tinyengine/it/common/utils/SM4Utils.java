@@ -2,16 +2,17 @@ package com.tinyengine.it.common.utils;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
-import javax.crypto.Cipher;
-import javax.crypto.KeyGenerator;
-import javax.crypto.SecretKey;
-import javax.crypto.spec.GCMParameterSpec;
-import javax.crypto.spec.SecretKeySpec;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.security.Security;
 import java.util.Base64;
+
+import javax.crypto.Cipher;
+import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.GCMParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
 
 public class SM4Utils {
 
@@ -28,7 +29,9 @@ public class SM4Utils {
     }
 
     /**
-     * 生成 SM4 密钥
+     * 生成 SM4 密钥.
+     *
+     * @return generated SM4 key encoded as Base64
      */
     public static String generateKeyBase64() throws Exception {
         byte[] key = generateKey();
@@ -47,11 +50,10 @@ public class SM4Utils {
         byte[] iv = new byte[IV_LENGTH_BYTES];
         SECURE_RANDOM.nextBytes(iv);
 
-        byte[] encrypted = doCipher(Cipher.ENCRYPT_MODE, apiKey.getBytes(StandardCharsets.UTF_8), key, iv);
-        byte[] output = ByteBuffer.allocate(iv.length + encrypted.length)
-            .put(iv)
-            .put(encrypted)
-            .array();
+        byte[] encrypted =
+                doCipher(Cipher.ENCRYPT_MODE, apiKey.getBytes(StandardCharsets.UTF_8), key, iv);
+        byte[] output =
+                ByteBuffer.allocate(iv.length + encrypted.length).put(iv).put(encrypted).array();
         return Base64.getEncoder().encodeToString(output);
     }
 
