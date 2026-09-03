@@ -31,6 +31,7 @@ import okhttp3.OkHttpClient;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.io.IOException;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
@@ -40,8 +41,10 @@ import java.util.List;
 @RequiredArgsConstructor
 @Slf4j
 public class VectorStoreConfig {
-    private static final int CHROMA_TIMEOUT_SEC = 30;
-    private static final int HEALTH_TIMEOUT_SEC = 5;
+    private static final int CHROMA_TIMEOUT = 30;
+    private static final int HEALTH_TIMEOUT = 5;
+    private static final String FALLBACK_WARNING =
+            "RAG features are disabled - using fallback embedding store";
 
     private final RAGConfig ragConfig;
 
@@ -51,31 +54,30 @@ public class VectorStoreConfig {
      * @return embedding model bean
      */
     @Bean
+    @SuppressWarnings("PMD.AvoidCatchingGenericException")
     public EmbeddingModel embeddingModel() {
+        EmbeddingModel embeddingModel;
         try {
             // 检查必要的配置参数
             if (ragConfig.getModelPath() == null || ragConfig.getTokenizerPath() == null) {
-                log.warn("ONNX model configuration is incomplete, using fallback embedding model");
-                return createFallbackEmbeddingModel();
+                logWarn("ONNX model configuration is incomplete, using fallback embedding model");
+                embeddingModel = createFallbackEmbeddingModel();
+            } else {
+                logInfo("Initializing ONNX embedding model...");
+                embeddingModel =
+                        new OnnxEmbeddingModel(
+                                ragConfig.getModelPath(),
+                                ragConfig.getTokenizerPath(),
+                                PoolingMode.MEAN);
+                logInfo("ONNX embedding model initialization successful");
             }
-
-            log.info("Initializing ONNX embedding model...");
-
-            EmbeddingModel model =
-                    new OnnxEmbeddingModel(
-                            ragConfig.getModelPath(),
-                            ragConfig.getTokenizerPath(),
-                            PoolingMode.MEAN);
-
-            log.info("✅ ONNX embedding model initialization successful");
-            return model;
-
-        } catch (Exception e) {
-            log.warn(
-                    "❌ ONNX embedding model initialization failed, using fallback implementation",
-                    e);
-            return createFallbackEmbeddingModel();
+        } catch (RuntimeException exception) {
+            logWarn(
+                    "ONNX embedding model initialization failed, using fallback implementation",
+                    exception);
+            embeddingModel = createFallbackEmbeddingModel();
         }
+        return embeddingModel;
     }
 
     /**
@@ -84,41 +86,37 @@ public class VectorStoreConfig {
      * @return embedding store bean
      */
     @Bean
+    @SuppressWarnings({"PMD.AvoidCatchingGenericException", "PMD.LawOfDemeter"})
     public EmbeddingStore<TextSegment> embeddingStore() {
+        EmbeddingStore<TextSegment> embeddingStore;
         try {
             // 检查必要的配置参数
             if (ragConfig.getChromaBaseUrl() == null) {
-                log.warn("ChromaDB configuration is incomplete, using fallback embedding store");
-                return createFallbackEmbeddingStore();
+                logWarn("ChromaDB configuration is incomplete, using fallback embedding store");
+                embeddingStore = createFallbackEmbeddingStore();
+            } else if (!testChromaConnection(ragConfig.getChromaBaseUrl())) {
+                logWarn("ChromaDB connection test failed, using fallback embedding store");
+                embeddingStore = createFallbackEmbeddingStore();
+            } else {
+                logInfo(
+                        "Attempting to initialize ChromaDB connection: {}",
+                        ragConfig.getChromaBaseUrl());
+                embeddingStore =
+                        ChromaEmbeddingStore.builder()
+                                .baseUrl(ragConfig.getChromaBaseUrl())
+                                .collectionName(
+                                        ragConfig.getChromaCollectionName() != null
+                                                ? ragConfig.getChromaCollectionName()
+                                                : "documents")
+                                .timeout(Duration.ofSeconds(CHROMA_TIMEOUT))
+                                .build();
+                logInfo("ChromaDB embeddingStore initialization successful");
             }
-
-            log.info(
-                    "Attempting to initialize ChromaDB connection: {}",
-                    ragConfig.getChromaBaseUrl());
-
-            // 测试连接
-            if (!testChromaConnection(ragConfig.getChromaBaseUrl())) {
-                log.warn("ChromaDB connection test failed, using fallback embedding store");
-                return createFallbackEmbeddingStore();
-            }
-
-            ChromaEmbeddingStore embeddingStore =
-                    ChromaEmbeddingStore.builder()
-                            .baseUrl(ragConfig.getChromaBaseUrl())
-                            .collectionName(
-                                    ragConfig.getChromaCollectionName() != null
-                                            ? ragConfig.getChromaCollectionName()
-                                            : "documents")
-                            .timeout(Duration.ofSeconds(CHROMA_TIMEOUT_SEC))
-                            .build();
-
-            log.info("✅ ChromaDB embeddingStore initialization successful");
-            return embeddingStore;
-
-        } catch (Exception e) {
-            log.warn("❌ ChromaDB initialization failed, using fallback embedding store", e);
-            return createFallbackEmbeddingStore();
+        } catch (RuntimeException exception) {
+            logWarn("ChromaDB initialization failed, using fallback embedding store", exception);
+            embeddingStore = createFallbackEmbeddingStore();
         }
+        return embeddingStore;
     }
 
     /**
@@ -127,35 +125,35 @@ public class VectorStoreConfig {
      * @return storage service bean
      */
     @Bean
+    @SuppressWarnings("PMD.AvoidCatchingGenericException")
     public StorageService vectorStorageService(
-            EmbeddingModel embeddingModel, EmbeddingStore<TextSegment> embeddingStore) {
+            final EmbeddingModel embeddingModel,
+            final EmbeddingStore<TextSegment> embeddingStore) {
+        StorageService storageService;
         try {
-            StorageService service = new StorageService(embeddingModel, embeddingStore, ragConfig);
+            storageService = new StorageService(embeddingModel, embeddingStore, ragConfig);
 
             // 检查服务状态
-            boolean modelAvailable = !(embeddingModel instanceof FallbackEmbeddingModel);
-            boolean storeAvailable = !(embeddingStore instanceof FallbackEmbeddingStore);
+            final boolean modelAvailable = !(embeddingModel instanceof FallbackEmbeddingModel);
+            final boolean storeAvailable = !(embeddingStore instanceof FallbackEmbeddingStore);
 
             if (modelAvailable && storeAvailable) {
-                log.info(
-                        "✅ StorageService initialization completed - RAG features are fully"
-                                + " available");
+                logInfo("StorageService initialization completed - RAG features are fully available");
             } else {
-                log.warn(
-                        "⚠️ StorageService initialization completed - RAG features are limited: "
+                logWarn(
+                        "StorageService initialization completed - RAG features are limited: "
                                 + "Model available: {}, Store available: {}",
                         modelAvailable,
                         storeAvailable);
             }
 
-            return service;
-
-        } catch (Exception e) {
-            log.error("❌ StorageService initialization failed, creating fallback instance", e);
+        } catch (RuntimeException exception) {
+            logError("StorageService initialization failed, creating fallback instance", exception);
             // 创建完全降级的实例
-            return new StorageService(
+            storageService = new StorageService(
                     createFallbackEmbeddingModel(), createFallbackEmbeddingStore(), ragConfig);
         }
+        return storageService;
     }
 
     /**
@@ -163,30 +161,30 @@ public class VectorStoreConfig {
      *
      * @return whether ChromaDB can be reached
      */
-    private boolean testChromaConnection(String baseUrl) {
+    private boolean testChromaConnection(final String baseUrl) {
+        boolean connected = false;
         try {
-            okhttp3.Request request =
+            final okhttp3.Request request =
                     new okhttp3.Request.Builder().url(baseUrl + "/api/v1/heartbeat").get().build();
 
-            OkHttpClient client =
+            final OkHttpClient client =
                     new OkHttpClient.Builder()
-                            .connectTimeout(Duration.ofSeconds(HEALTH_TIMEOUT_SEC))
-                            .readTimeout(Duration.ofSeconds(HEALTH_TIMEOUT_SEC))
+                            .connectTimeout(Duration.ofSeconds(HEALTH_TIMEOUT))
+                            .readTimeout(Duration.ofSeconds(HEALTH_TIMEOUT))
                             .build();
 
             try (okhttp3.Response response = client.newCall(request).execute()) {
                 if (response.isSuccessful()) {
-                    log.info("✅ ChromaDB connection test successful");
-                    return true;
+                    logInfo("ChromaDB connection test successful");
+                    connected = true;
                 } else {
-                    log.warn("ChromaDB connection test failed with status: {}", response.code());
-                    return false;
+                    logWarn("ChromaDB connection test failed with status: {}", response.code());
                 }
             }
-        } catch (Exception e) {
-            log.warn("ChromaDB connection test failed: {}", e.getMessage());
-            return false;
+        } catch (IOException exception) {
+            logWarn("ChromaDB connection test failed: {}", exception.getMessage());
         }
+        return connected;
     }
 
     /**
@@ -207,11 +205,33 @@ public class VectorStoreConfig {
         return new FallbackEmbeddingStore();
     }
 
+    private static void logInfo(final String message, final Object... arguments) {
+        if (log.isInfoEnabled()) {
+            log.info(message, arguments);
+        }
+    }
+
+    private static void logWarn(final String message, final Object... arguments) {
+        if (log.isWarnEnabled()) {
+            log.warn(message, arguments);
+        }
+    }
+
+    private static void logError(final String message, final Object... arguments) {
+        if (log.isErrorEnabled()) {
+            log.error(message, arguments);
+        }
+    }
+
+    private static void logFallbackEmbeddingStoreWarning() {
+        logWarn(FALLBACK_WARNING);
+    }
+
     /** 降级嵌入模型实现 */
     private static class FallbackEmbeddingModel implements EmbeddingModel {
         @Override
-        public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
-            log.warn("RAG features are disabled - using fallback embedding model");
+        public Response<List<Embedding>> embedAll(final List<TextSegment> textSegments) {
+            logWarn("RAG features are disabled - using fallback embedding model");
             // 返回空的嵌入列表
             return Response.from(Collections.emptyList());
         }
@@ -220,37 +240,38 @@ public class VectorStoreConfig {
     /** 降级嵌入存储实现 */
     private static class FallbackEmbeddingStore implements EmbeddingStore<TextSegment> {
         @Override
-        public String add(Embedding embedding) {
-            log.warn("RAG features are disabled - using fallback embedding store");
+        public String add(final Embedding embedding) {
+            logFallbackEmbeddingStoreWarning();
             return "fallback-id";
         }
 
         @Override
-        public void add(String id, Embedding embedding) {
-            log.warn("RAG features are disabled - using fallback embedding store");
+        public void add(final String identifier, final Embedding embedding) {
+            logFallbackEmbeddingStoreWarning();
         }
 
         @Override
-        public String add(Embedding embedding, TextSegment embedded) {
-            log.warn("RAG features are disabled - using fallback embedding store");
+        public String add(final Embedding embedding, final TextSegment embedded) {
+            logFallbackEmbeddingStoreWarning();
             return "fallback-id";
         }
 
         @Override
-        public List<String> addAll(List<Embedding> embeddings) {
-            log.warn("RAG features are disabled - using fallback embedding store");
+        public List<String> addAll(final List<Embedding> embeddings) {
+            logFallbackEmbeddingStoreWarning();
             return Collections.emptyList();
         }
 
         @Override
-        public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
-            log.warn("RAG features are disabled - using fallback embedding store");
+        public List<String> addAll(
+                final List<Embedding> embeddings, final List<TextSegment> embedded) {
+            logFallbackEmbeddingStoreWarning();
             return Collections.emptyList();
         }
 
         @Override
-        public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
-            log.warn("RAG features are disabled - using fallback embedding store");
+        public EmbeddingSearchResult<TextSegment> search(final EmbeddingSearchRequest request) {
+            logFallbackEmbeddingStoreWarning();
             return new EmbeddingSearchResult<>(Collections.emptyList());
         }
     }

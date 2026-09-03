@@ -37,6 +37,7 @@ public class RAGConfig {
 
     // Chroma 配置
     private String chromaBaseUrl = System.getenv("CHROMA_BASE_URL");
+    @SuppressWarnings("PMD.LongVariable")
     private String chromaCollectionName = "tinyengine_documents";
     private String modelPath = System.getenv("MODEL_PATH");
     private String tokenizerPath = System.getenv("TOKENIZER_PATH");
@@ -52,5 +53,5 @@ public class RAGConfig {
     private int batchSize = DEF_BATCH_SIZE;
 
     // 其他配置
-    private boolean debugMode = false;
+    private boolean debugMode;
 }

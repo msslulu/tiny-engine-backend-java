@@ -15,6 +15,7 @@ import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -67,22 +69,26 @@ public class DatabaseCleanupService {
                     "t_page_history",
                     "t_page_template");
 
+    public DatabaseCleanupService() {
+        // Required for Spring field injection.
+    }
+
     /** 每天24:00自动执行清空操作 */
     @Scheduled(cron = "${cleanup.cron-expression:0 0 0 * * ?}")
     public void autoCleanupAtMidnight() {
         if (!cleanupProperties.isEnabled()) {
-            LOGGER.info("⏸️ Clearing tasks is disabled, skipping execution");
+            logInfo("⏸️ Clearing tasks is disabled, skipping execution");
             return;
         }
 
-        String executionId = UUID.randomUUID().toString().substring(0, EXEC_ID_LENGTH);
-        String startTime = LocalDateTime.now(ZoneId.systemDefault()).format(FORMATTER);
+        final String executionId = UUID.randomUUID().toString().substring(0, EXEC_ID_LENGTH);
+        final String startTime = LocalDateTime.now(ZoneId.systemDefault()).format(FORMATTER);
 
-        LOGGER.info("======= Start executing the database clearing task [{}] =======", executionId);
-        LOGGER.info("⏰ Time: {}", startTime);
-        LOGGER.info("📋 Tables: {}", getWhitelistTables());
+        logInfo("======= Start executing the database clearing task [{}] =======", executionId);
+        logInfo("⏰ Time: {}", startTime);
+        logInfo("📋 Tables: {}", getWhitelistTables());
 
-        ExecutionStats stats = new ExecutionStats(executionId, startTime);
+        final ExecutionStats stats = new ExecutionStats(executionId, startTime);
         executionStats.put(executionId, stats);
         totalExecutions.incrementAndGet();
 
@@ -95,12 +101,12 @@ public class DatabaseCleanupService {
                 validateTableName(tableName);
 
                 if (!tableExists(tableName)) {
-                    LOGGER.warn("⚠️  Table {} does not exist, skip", tableName);
+                    logWarn("⚠️  Table {} does not exist, skip", tableName);
                     stats.recordSkipped(tableName, "Table does not exist");
                     continue;
                 }
 
-                long beforeCount = getTableRecordCount(tableName);
+                final long beforeCount = getTableRecordCount(tableName);
                 long rowsCleaned;
 
                 if (cleanupProperties.isUseTruncate()) {
@@ -113,27 +119,31 @@ public class DatabaseCleanupService {
                 totalRowsCleaned += rowsCleaned;
                 successCount++;
 
-                LOGGER.info("✅ Table {} cleared: {} records deleted", tableName, rowsCleaned);
+                logInfo("✅ Table {} cleared: {} records deleted", tableName, rowsCleaned);
                 stats.recordSuccess(tableName, rowsCleaned);
 
-            } catch (Exception e) {
+            } catch (DataAccessException | IllegalArgumentException exception) {
                 failedCount++;
-                LOGGER.error("❌ Failed to clear table {}: {}", tableName, e.getMessage(), e);
-                stats.recordFailure(tableName, e.getMessage());
+                logError(
+                        "❌ Failed to clear table {}: {}",
+                        tableName,
+                        exception.getMessage(),
+                        exception);
+                stats.recordFailure(tableName, exception.getMessage());
             }
         }
 
-        String endTime = LocalDateTime.now(ZoneId.systemDefault()).format(FORMATTER);
+        final String endTime = LocalDateTime.now(ZoneId.systemDefault()).format(FORMATTER);
         stats.setEndTime(endTime);
         stats.setTotalRowsCleaned(totalRowsCleaned);
 
-        LOGGER.info("📊 ======= Task Completion Statistics [{}] =======", executionId);
-        LOGGER.info("✅ Successful table count: {}", successCount);
-        LOGGER.info("❌ Failure count: {}", failedCount);
-        LOGGER.info("📈 Total deleted records: {}", totalRowsCleaned);
-        LOGGER.info("⏰ Time-consuming: {} second", stats.getDurationSeconds());
-        LOGGER.info("🕐 Start: {}, End: {}", startTime, endTime);
-        LOGGER.info("🎉 ======= Task execution completed =======\n");
+        logInfo("📊 ======= Task Completion Statistics [{}] =======", executionId);
+        logInfo("✅ Successful table count: {}", successCount);
+        logInfo("❌ Failure count: {}", failedCount);
+        logInfo("📈 Total deleted records: {}", totalRowsCleaned);
+        logInfo("⏰ Time-consuming: {} second", stats.getDurationSeconds());
+        logInfo("🕐 Start: {}, End: {}", startTime, endTime);
+        logInfo("🎉 ======= Task execution completed =======\n");
     }
 
     /** 每天23:55发送预警通知 */
@@ -143,25 +153,25 @@ public class DatabaseCleanupService {
             return;
         }
 
-        LOGGER.warn(
+        logWarn(
                 "⚠️  ⚠️  ⚠️ Important Notice: The database table will be automatically cleared in 5"
                         + " minutes！");
-        LOGGER.warn("📋 Target table: {}", getWhitelistTables());
-        LOGGER.warn("⏰ Execution Time: 00:00:00");
-        LOGGER.warn("💡 If you need to cancel, please change the settings: cleanup.enabled=false");
-        LOGGER.warn("==========================================");
+        logWarn("📋 Target table: {}", getWhitelistTables());
+        logWarn("⏰ Execution Time: 00:00:00");
+        logWarn("💡 If you need to cancel, please change the settings: cleanup.enabled=false");
+        logWarn("==========================================");
     }
 
     /** 应用启动时初始化 */
     @PostConstruct
     public void init() {
-        LOGGER.info("🚀 Database auto-clear service initialization completed");
-        LOGGER.info("📋 Configuration table: {}", getWhitelistTables());
-        LOGGER.info("⏰ Execution time: {}", cleanupProperties.getCronExpression());
-        LOGGER.info(
+        logInfo("🚀 Database auto-clear service initialization completed");
+        logInfo("📋 Configuration table: {}", getWhitelistTables());
+        logInfo("⏰ Execution time: {}", cleanupProperties.getCronExpression());
+        logInfo(
                 "🔧 Mode in use: {}", cleanupProperties.isUseTruncate() ? "TRUNCATE" : "DELETE");
-        LOGGER.info("✅ Service status: {}", cleanupProperties.isEnabled() ? "Enabled" : "Disabled");
-        LOGGER.info("==========================================");
+        logInfo("✅ Service status: {}", cleanupProperties.isEnabled() ? "Enabled" : "Disabled");
+        logInfo("==========================================");
     }
 
     /**
@@ -170,7 +180,7 @@ public class DatabaseCleanupService {
      * @return whitelist table names
      */
     public List<String> getWhitelistTables() {
-        List<String> tables = cleanupProperties.getWhitelistTables();
+        final List<String> tables = cleanupProperties.getWhitelistTables();
         return tables != null && !tables.isEmpty() ? tables : DEFAULT_TABLES;
     }
 
@@ -179,17 +189,16 @@ public class DatabaseCleanupService {
      *
      * @return number of deleted rows
      */
-    private long clearTableData(String tableName) {
+    private long clearTableData(final String tableName) {
         validateTableName(tableName);
-        String sql = "DELETE FROM " + tableName;
-        int affectedRows = jdbcTemplate.update(sql);
-        return affectedRows;
+        final String sql = "DELETE FROM " + tableName;
+        return jdbcTemplate.update(sql);
     }
 
     /** 清空表数据（TRUNCATE方式） */
-    private void truncateTable(String tableName) {
+    private void truncateTable(final String tableName) {
         validateTableName(tableName);
-        String sql = "TRUNCATE TABLE " + tableName;
+        final String sql = "TRUNCATE TABLE " + tableName;
         jdbcTemplate.execute(sql);
     }
 
@@ -198,18 +207,19 @@ public class DatabaseCleanupService {
      *
      * @return whether the table exists
      */
-    public boolean tableExists(String tableName) {
+    public boolean tableExists(final String tableName) {
+        boolean tableExists = false;
         try {
-            String sql =
+            final String sql =
                     "SELECT COUNT(*) FROM information_schema.tables "
                             + "WHERE table_schema = DATABASE() AND table_name = ?";
-            Integer count =
-                    jdbcTemplate.queryForObject(sql, Integer.class, tableName.toUpperCase());
-            return count != null && count > 0;
-        } catch (Exception e) {
-            LOGGER.warn("The checklist has failed: {}", e.getMessage());
-            return false;
+            final Integer count =
+                    jdbcTemplate.queryForObject(sql, Integer.class, tableName.toUpperCase(Locale.ROOT));
+            tableExists = count != null && count > 0;
+        } catch (DataAccessException | IllegalArgumentException exception) {
+            logWarn("The checklist has failed: {}", exception.getMessage());
         }
+        return tableExists;
     }
 
     /**
@@ -217,21 +227,22 @@ public class DatabaseCleanupService {
      *
      * @return record count in the table
      */
-    public long getTableRecordCount(String tableName) {
+    public long getTableRecordCount(final String tableName) {
+        long recordCount = -1;
         try {
             validateTableName(tableName);
-            String sql = "SELECT COUNT(*) FROM " + tableName;
-            Long count = jdbcTemplate.queryForObject(sql, Long.class);
-            return count != null ? count : 0;
-        } catch (Exception e) {
-            LOGGER.error("获取表记录数失败: {}", e.getMessage());
-            return -1;
+            final String sql = "SELECT COUNT(*) FROM " + tableName;
+            final Long count = jdbcTemplate.queryForObject(sql, Long.class);
+            recordCount = count != null ? count : 0;
+        } catch (DataAccessException | IllegalArgumentException exception) {
+            logError("获取表记录数失败: {}", exception.getMessage());
         }
+        return recordCount;
     }
 
     /** 验证表名安全性 */
-    private void validateTableName(String tableName) {
-        if (tableName == null || tableName.trim().isEmpty()) {
+    private void validateTableName(final String tableName) {
+        if (tableName == null || tableName.isBlank()) {
             throw new IllegalArgumentException("Table name cannot be empty");
         }
         if (!tableName.matches("^[a-zA-Z_][a-zA-Z0-9_]*$")) {
@@ -252,6 +263,24 @@ public class DatabaseCleanupService {
         return totalExecutions.get();
     }
 
+    private static void logInfo(final String message, final Object... arguments) {
+        if (LOGGER.isInfoEnabled()) {
+            LOGGER.info(message, arguments);
+        }
+    }
+
+    private static void logWarn(final String message, final Object... arguments) {
+        if (LOGGER.isWarnEnabled()) {
+            LOGGER.warn(message, arguments);
+        }
+    }
+
+    private static void logError(final String message, final Object... arguments) {
+        if (LOGGER.isErrorEnabled()) {
+            LOGGER.error(message, arguments);
+        }
+    }
+
     /** 执行统计内部类 */
     public static class ExecutionStats {
         private final String executionId;
@@ -260,20 +289,20 @@ public class DatabaseCleanupService {
         private long totalRowsCleaned;
         private final Map<String, TableResult> tableResults = new LinkedHashMap<>();
 
-        public ExecutionStats(String executionId, String startTime) {
+        public ExecutionStats(final String executionId, final String startTime) {
             this.executionId = executionId;
             this.startTime = startTime;
         }
 
-        public void recordSuccess(String tableName, long rowsCleaned) {
+        public void recordSuccess(final String tableName, final long rowsCleaned) {
             tableResults.put(tableName, new TableResult("SUCCESS", rowsCleaned, null));
         }
 
-        public void recordFailure(String tableName, String errorMessage) {
+        public void recordFailure(final String tableName, final String errorMessage) {
             tableResults.put(tableName, new TableResult("FAILED", 0, errorMessage));
         }
 
-        public void recordSkipped(String tableName, String reason) {
+        public void recordSkipped(final String tableName, final String reason) {
             tableResults.put(tableName, new TableResult("SKIPPED", 0, reason));
         }
 
@@ -290,7 +319,7 @@ public class DatabaseCleanupService {
             return endTime;
         }
 
-        public void setEndTime(String endTime) {
+        public void setEndTime(final String endTime) {
             this.endTime = endTime;
         }
 
@@ -298,7 +327,7 @@ public class DatabaseCleanupService {
             return totalRowsCleaned;
         }
 
-        public void setTotalRowsCleaned(long totalRowsCleaned) {
+        public void setTotalRowsCleaned(final long totalRowsCleaned) {
             this.totalRowsCleaned = totalRowsCleaned;
         }
 
@@ -322,7 +351,7 @@ public class DatabaseCleanupService {
         private final long rowsCleaned;
         private final String message;
 
-        public TableResult(String status, long rowsCleaned, String message) {
+        public TableResult(final String status, final long rowsCleaned, final String message) {
             this.status = status;
             this.rowsCleaned = rowsCleaned;
             this.message = message;
