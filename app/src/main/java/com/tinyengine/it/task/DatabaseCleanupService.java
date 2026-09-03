@@ -69,10 +69,6 @@ public class DatabaseCleanupService {
                     "t_page_history",
                     "t_page_template");
 
-    public DatabaseCleanupService() {
-        // Required for Spring field injection.
-    }
-
     /** 每天24:00自动执行清空操作 */
     @Scheduled(cron = "${cleanup.cron-expression:0 0 0 * * ?}")
     public void autoCleanupAtMidnight() {
@@ -81,8 +77,8 @@ public class DatabaseCleanupService {
             return;
         }
 
-        final String executionId = UUID.randomUUID().toString().substring(0, EXEC_ID_LENGTH);
-        final String startTime = LocalDateTime.now(ZoneId.systemDefault()).format(FORMATTER);
+        final String executionId = createExecutionId();
+        final String startTime = currentTime();
 
         logInfo("======= Start executing the database clearing task [{}] =======", executionId);
         logInfo("⏰ Time: {}", startTime);
@@ -92,55 +88,20 @@ public class DatabaseCleanupService {
         executionStats.put(executionId, stats);
         totalExecutions.incrementAndGet();
 
-        int successCount = 0;
-        int failedCount = 0;
-        long totalRowsCleaned = 0L;
+        final CleanupSummary cleanupSummary = new CleanupSummary();
 
-        for (String tableName : getWhitelistTables()) {
-            try {
-                validateTableName(tableName);
-
-                if (!tableExists(tableName)) {
-                    logWarn("⚠️  Table {} does not exist, skip", tableName);
-                    stats.recordSkipped(tableName, "Table does not exist");
-                    continue;
-                }
-
-                final long beforeCount = getTableRecordCount(tableName);
-                long rowsCleaned;
-
-                if (cleanupProperties.isUseTruncate()) {
-                    truncateTable(tableName);
-                    rowsCleaned = beforeCount;
-                } else {
-                    rowsCleaned = clearTableData(tableName);
-                }
-
-                totalRowsCleaned += rowsCleaned;
-                successCount++;
-
-                logInfo("✅ Table {} cleared: {} records deleted", tableName, rowsCleaned);
-                stats.recordSuccess(tableName, rowsCleaned);
-
-            } catch (DataAccessException | IllegalArgumentException exception) {
-                failedCount++;
-                logError(
-                        "❌ Failed to clear table {}: {}",
-                        tableName,
-                        exception.getMessage(),
-                        exception);
-                stats.recordFailure(tableName, exception.getMessage());
-            }
+        for (final String tableName : getWhitelistTables()) {
+            cleanTable(tableName, stats, cleanupSummary);
         }
 
-        final String endTime = LocalDateTime.now(ZoneId.systemDefault()).format(FORMATTER);
+        final String endTime = currentTime();
         stats.setEndTime(endTime);
-        stats.setTotalRowsCleaned(totalRowsCleaned);
+        stats.setTotalRowsCleaned(cleanupSummary.getTotalRowsCleaned());
 
         logInfo("📊 ======= Task Completion Statistics [{}] =======", executionId);
-        logInfo("✅ Successful table count: {}", successCount);
-        logInfo("❌ Failure count: {}", failedCount);
-        logInfo("📈 Total deleted records: {}", totalRowsCleaned);
+        logInfo("✅ Successful table count: {}", cleanupSummary.getSuccessCount());
+        logInfo("❌ Failure count: {}", cleanupSummary.getFailedCount());
+        logInfo("📈 Total deleted records: {}", cleanupSummary.getTotalRowsCleaned());
         logInfo("⏰ Time-consuming: {} second", stats.getDurationSeconds());
         logInfo("🕐 Start: {}, End: {}", startTime, endTime);
         logInfo("🎉 ======= Task execution completed =======\n");
@@ -179,9 +140,59 @@ public class DatabaseCleanupService {
      *
      * @return whitelist table names
      */
+    @SuppressWarnings("PMD.LawOfDemeter")
     public List<String> getWhitelistTables() {
         final List<String> tables = cleanupProperties.getWhitelistTables();
         return tables != null && !tables.isEmpty() ? tables : DEFAULT_TABLES;
+    }
+
+    private static String createExecutionId() {
+        final UUID executionUuid = UUID.randomUUID();
+        final String uuidValue = executionUuid.toString();
+        return uuidValue.substring(0, EXEC_ID_LENGTH);
+    }
+
+    private static String currentTime() {
+        final ZoneId systemZone = ZoneId.systemDefault();
+        final LocalDateTime currentDateTime = LocalDateTime.now(systemZone);
+        return currentDateTime.format(FORMATTER);
+    }
+
+    private void cleanTable(
+            final String tableName,
+            final ExecutionStats stats,
+            final CleanupSummary cleanupSummary) {
+        try {
+            validateTableName(tableName);
+            if (!tableExists(tableName)) {
+                logWarn("⚠️  Table {} does not exist, skip", tableName);
+                stats.recordSkipped(tableName, "Table does not exist");
+                return;
+            }
+
+            final long rowsCleaned = clearTable(tableName);
+            cleanupSummary.recordSuccess(rowsCleaned);
+            logInfo("✅ Table {} cleared: {} records deleted", tableName, rowsCleaned);
+            stats.recordSuccess(tableName, rowsCleaned);
+        } catch (DataAccessException | IllegalArgumentException exception) {
+            cleanupSummary.recordFailure();
+            logError(
+                    "❌ Failed to clear table {}: {}",
+                    tableName,
+                    exception.getMessage(),
+                    exception);
+            stats.recordFailure(tableName, exception.getMessage());
+        }
+    }
+
+    private long clearTable(final String tableName) {
+        if (!cleanupProperties.isUseTruncate()) {
+            return clearTableData(tableName);
+        }
+
+        final long recordCount = getTableRecordCount(tableName);
+        truncateTable(tableName);
+        return recordCount;
     }
 
     /**
@@ -208,18 +219,17 @@ public class DatabaseCleanupService {
      * @return whether the table exists
      */
     public boolean tableExists(final String tableName) {
-        boolean tableExists = false;
         try {
             final String sql =
                     "SELECT COUNT(*) FROM information_schema.tables "
                             + "WHERE table_schema = DATABASE() AND table_name = ?";
             final Integer count =
                     jdbcTemplate.queryForObject(sql, Integer.class, tableName.toUpperCase(Locale.ROOT));
-            tableExists = count != null && count > 0;
+            return count != null && count > 0;
         } catch (DataAccessException | IllegalArgumentException exception) {
             logWarn("The checklist has failed: {}", exception.getMessage());
+            return false;
         }
-        return tableExists;
     }
 
     /**
@@ -228,16 +238,15 @@ public class DatabaseCleanupService {
      * @return record count in the table
      */
     public long getTableRecordCount(final String tableName) {
-        long recordCount = -1;
         try {
             validateTableName(tableName);
             final String sql = "SELECT COUNT(*) FROM " + tableName;
             final Long count = jdbcTemplate.queryForObject(sql, Long.class);
-            recordCount = count != null ? count : 0;
+            return count != null ? count : 0;
         } catch (DataAccessException | IllegalArgumentException exception) {
             logError("获取表记录数失败: {}", exception.getMessage());
+            return -1;
         }
-        return recordCount;
     }
 
     /** 验证表名安全性 */
@@ -278,6 +287,33 @@ public class DatabaseCleanupService {
     private static void logError(final String message, final Object... arguments) {
         if (LOGGER.isErrorEnabled()) {
             LOGGER.error(message, arguments);
+        }
+    }
+
+    private static final class CleanupSummary {
+        private int successCount;
+        private int failedCount;
+        private long totalRowsCleaned;
+
+        private void recordSuccess(final long rowsCleaned) {
+            successCount++;
+            totalRowsCleaned += rowsCleaned;
+        }
+
+        private void recordFailure() {
+            failedCount++;
+        }
+
+        private int getSuccessCount() {
+            return successCount;
+        }
+
+        private int getFailedCount() {
+            return failedCount;
+        }
+
+        private long getTotalRowsCleaned() {
+            return totalRowsCleaned;
         }
     }
 
