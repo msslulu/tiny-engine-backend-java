@@ -81,10 +81,10 @@ public class AiChatV1ServiceImpl implements AiChatV1Service {
         String normalizedUrl = normalizeApiUrl(baseUrl);
 
         // 对最终请求 URL 做安全校验（在 normalize 之后，确保校验的是真正发出的地址）
-        validateFinalUrl(normalizedUrl);
+        URI requestUri = validateFinalUrl(normalizedUrl);
 
         HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
-            .uri(URI.create(normalizedUrl))
+            .uri(requestUri)
             .header("Content-Type", "application/json")
             .header("Authorization", "Bearer " + apiKey)
             .POST(HttpRequest.BodyPublishers.ofString(requestBody));
@@ -105,7 +105,7 @@ public class AiChatV1ServiceImpl implements AiChatV1Service {
     @Override
     public String getToken(String apiKey) throws Exception {
         String sm4Key = System.getenv("SM4KEY");
-        String encrypt = SM4Utils.encryptECB(apiKey, sm4Key);
+        String encrypt = SM4Utils.encrypt(apiKey, sm4Key);
         return "EKEY_"+ encrypt;
     }
 
@@ -253,7 +253,7 @@ public class AiChatV1ServiceImpl implements AiChatV1Service {
 
     private static final Set<String> LOOPBACK_HOSTS = Set.of("localhost", "127.0.0.1", "::1", "[::1]");
 
-    void validateFinalUrl(String finalUrl) {
+    URI validateFinalUrl(String finalUrl) {
         URI uri;
         try {
             uri = new URI(finalUrl);
@@ -264,6 +264,9 @@ public class AiChatV1ServiceImpl implements AiChatV1Service {
         String host = uri.getHost();
         if (host == null || host.isEmpty()) {
             throw new ServiceException("400", "Invalid baseUrl: missing host");
+        }
+        if (uri.getUserInfo() != null || uri.getRawFragment() != null) {
+            throw new ServiceException("400", "Invalid baseUrl: user info and fragments are not allowed");
         }
 
         boolean isLoopback = LOOPBACK_HOSTS.contains(host.toLowerCase(Locale.ROOT));
@@ -276,7 +279,7 @@ public class AiChatV1ServiceImpl implements AiChatV1Service {
             }
 
             enforceHttpsAndIpCheck(uri, host);
-            return;
+            return uri;
         }
 
         boolean matched = allowedHosts.stream()
@@ -287,10 +290,11 @@ public class AiChatV1ServiceImpl implements AiChatV1Service {
         }
 
         if (isLoopback) {
-            return;
+            return uri;
         }
 
         enforceHttpsAndIpCheck(uri, host);
+        return uri;
     }
 
     void enforceHttpsAndIpCheck(URI uri, String host) {
@@ -383,9 +387,10 @@ public class AiChatV1ServiceImpl implements AiChatV1Service {
     private String getApiKey(String encryptApiKey) throws Exception {
         String sm4Key = System.getenv("SM4KEY");
 
+
         if (encryptApiKey.startsWith("EKEY_")) {
             String  encryptBase64ApiKey = encryptApiKey.substring(5);
-            return SM4Utils.decryptECB(encryptBase64ApiKey, sm4Key);
+            return SM4Utils.decrypt(encryptBase64ApiKey, sm4Key);
         }
         return encryptApiKey;
     }

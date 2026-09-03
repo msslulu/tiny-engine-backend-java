@@ -229,7 +229,7 @@ public class ModelServiceImpl extends ServiceImpl<ModelMapper, Model> implements
                 .map(item -> JsonUtils.MAPPER.convertValue(item, ParametersDto.class))
                 .collect(Collectors.toList());
         fields.forEach(item -> {
-            if(item.getIsModel()) {
+            if (Boolean.TRUE.equals(item.getIsModel())) {
                 Model result = this.baseMapper.selectById(item.getDefaultValue());
                 sql.append(getTableByModle(result));
             }

@@ -35,6 +35,7 @@ public class RAGConfig {
     private String chromaCollectionName = "tinyengine_documents";
     private String modelPath = System.getenv("MODEL_PATH");
     private String tokenizerPath = System.getenv("TOKENIZER_PATH");
+    private String documentRoot = System.getenv("FOLDER_PATH");
 
     // 连接配置
     private int timeoutSeconds = 30;

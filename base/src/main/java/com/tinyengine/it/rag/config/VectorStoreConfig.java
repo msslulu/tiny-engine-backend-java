@@ -113,7 +113,7 @@ public class VectorStoreConfig {
     @Bean
     public StorageService vectorStorageService(EmbeddingModel embeddingModel, EmbeddingStore<TextSegment> embeddingStore) {
         try {
-            StorageService service = new StorageService(embeddingModel, embeddingStore);
+            StorageService service = new StorageService(embeddingModel, embeddingStore, ragConfig);
 
             // 检查服务状态
             boolean modelAvailable = !(embeddingModel instanceof FallbackEmbeddingModel);
@@ -131,7 +131,7 @@ public class VectorStoreConfig {
         } catch (Exception e) {
             log.error("❌ StorageService initialization failed, creating fallback instance", e);
             // 创建完全降级的实例
-            return new StorageService(createFallbackEmbeddingModel(), createFallbackEmbeddingStore());
+            return new StorageService(createFallbackEmbeddingModel(), createFallbackEmbeddingStore(), ragConfig);
         }
     }
 

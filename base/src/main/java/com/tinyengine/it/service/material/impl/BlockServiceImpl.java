@@ -65,7 +65,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -388,8 +387,8 @@ public class BlockServiceImpl extends ServiceImpl<BlockMapper, Block> implements
     @Override
     public IPage<Block> findBlocksByPagetionList(BlockParamDto blockParamDto) {
         String appId = blockParamDto.getAppId();
-        // 如果 appId 存在并且不匹配指定的正则表达式，则删除它
-        if (appId != null && !Pattern.matches("^[1-9]+[0-9]*$", appId)) {
+        // 如果 appId 不是正整数，则删除它
+        if (appId != null && !isPositiveInteger(appId)) {
             blockParamDto.setAppId(null); // 设置成null达到map中remove的效果
         }
         // 获取查询条件
@@ -748,5 +747,22 @@ public class BlockServiceImpl extends ServiceImpl<BlockMapper, Block> implements
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
         buildInfo.put("endTime", buildTime.format(formatter));
         return buildInfo;
+    }
+
+    private boolean isPositiveInteger(String value) {
+        if (value == null || value.isEmpty()) {
+            return false;
+        }
+        char first = value.charAt(0);
+        if (first < '1' || first > '9') {
+            return false;
+        }
+        for (int i = 1; i < value.length(); i++) {
+            char c = value.charAt(i);
+            if (c < '0' || c > '9') {
+                return false;
+            }
+        }
+        return true;
     }
 }

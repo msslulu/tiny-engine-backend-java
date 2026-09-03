@@ -6,6 +6,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class SqlIdentifierValidatorTest {
@@ -109,5 +110,10 @@ class SqlIdentifierValidatorTest {
                     () -> SqlIdentifierValidator.validate(payload),
                     "Should reject: " + payload);
         }
+    }
+
+    @Test
+    void escapeSqlLiteral() {
+        assertEquals("it''s \\\\ ok", SqlIdentifierValidator.escapeSqlLiteral("it's \\ ok"));
     }
 }

@@ -34,9 +34,11 @@ import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -58,7 +60,7 @@ public class StorageService {
     private final EmbeddingModel embeddingModel;
     private final EmbeddingStore<TextSegment> embeddingStore;
 
-    private final RAGConfig ragConfig = new RAGConfig();
+    private final RAGConfig ragConfig;
 
     // 支持的集合列表
     private static final List<String> SUPPORTED_COLLECTIONS = List.of(
@@ -98,12 +100,68 @@ public class StorageService {
         return SUPPORTED_FORMATS.stream().anyMatch(format -> fileName.endsWith(format));
     }
 
+    Path getDocumentRoot() {
+        String rootPath = ragConfig.getDocumentRoot();
+        if (rootPath == null || rootPath.isBlank()) {
+            throw new ServiceException(ExceptionEnum.CM329.getResultCode(), "Document root is not configured");
+        }
+
+        try {
+            Path root = Paths.get(rootPath).toAbsolutePath().normalize();
+            if (!Files.exists(root) || !Files.isDirectory(root)) {
+                throw new ServiceException(ExceptionEnum.CM329.getResultCode(), "Document root does not exist: " + root);
+            }
+            return root.toRealPath();
+        } catch (InvalidPathException | IOException e) {
+            throw new ServiceException(ExceptionEnum.CM329.getResultCode(), "Invalid document root: " + rootPath);
+        }
+    }
+
+    Path resolveDocumentPath(String rawPath) {
+        return resolveDocumentPath(rawPath, getDocumentRoot());
+    }
+
+    Path resolveDocumentPath(String rawPath, Path documentRoot) {
+        if (rawPath == null || rawPath.isBlank()) {
+            throw new ServiceException(ExceptionEnum.CM329.getResultCode(), "Document path cannot be empty");
+        }
+
+        try {
+            Path root = documentRoot.toAbsolutePath().normalize();
+            Path requested = Paths.get(rawPath);
+            Path resolved = requested.isAbsolute()
+                ? requested.toAbsolutePath().normalize()
+                : root.resolve(requested).normalize();
+            if (!resolved.startsWith(root)) {
+                throw new ServiceException(ExceptionEnum.CM329.getResultCode(), "Document path is outside the allowed root");
+            }
+            return resolved;
+        } catch (InvalidPathException e) {
+            throw new ServiceException(ExceptionEnum.CM329.getResultCode(), "Invalid document path");
+        }
+    }
+
+    private Path resolveRealDocumentPath(Path filePath, Path documentRoot) throws IOException {
+        Path root = documentRoot.toRealPath();
+        Path realPath = filePath.toRealPath();
+        if (!realPath.startsWith(root)) {
+            throw new ServiceException(ExceptionEnum.CM329.getResultCode(), "Document path is outside the allowed root");
+        }
+        return realPath;
+    }
+
     /**
      * 构造函数
      */
     public StorageService(EmbeddingModel embeddingModel, EmbeddingStore<TextSegment> embeddingStore) {
+        this(embeddingModel, embeddingStore, new RAGConfig());
+    }
+
+    @Autowired
+    public StorageService(EmbeddingModel embeddingModel, EmbeddingStore<TextSegment> embeddingStore, RAGConfig ragConfig) {
         this.embeddingModel = embeddingModel;
         this.embeddingStore = embeddingStore;
+        this.ragConfig = ragConfig == null ? new RAGConfig() : ragConfig;
         log.info("StorageService initialized with support for {} file formats", SUPPORTED_FORMATS.size());
 
         // 初始化集合映射
@@ -133,18 +191,10 @@ public class StorageService {
      */
     public VectorDocument autoAddFolderToKnowledgeBase() {
         try {
-            String folderPath = System.getenv("FOLDER_PATH");
-            if (folderPath == null || folderPath.isBlank()) {
-                throw new ServiceException(ExceptionEnum.CM329.getResultCode(), "FOLDER_PATH does not exist: " + folderPath);
-            }
-            // 验证文件夹路径
-            Path folder = Paths.get(folderPath);
-            if (!Files.exists(folder) || !Files.isDirectory(folder)) {
-                throw new ServiceException(ExceptionEnum.CM329.getResultCode(), "Folder does not exist: " + folderPath);
-            }
+            Path folder = getDocumentRoot();
 
             // 扫描文件夹中的所有支持的文件
-            List<String> filePaths = scanSupportedFiles(folderPath);
+            List<String> filePaths = scanSupportedFiles(folder);
 
             if (filePaths.isEmpty()) {
                 throw new ServiceException(ExceptionEnum.CM329.getResultCode(),
@@ -152,7 +202,7 @@ public class StorageService {
                          SUPPORTED_FORMATS));
             }
 
-            log.info("Found {} supported files in folder: {}", filePaths.size(), folderPath);
+            log.info("Found {} supported files in folder: {}", filePaths.size(), folder);
 
             return initializeKnowledgeBase(filePaths);
 
@@ -167,20 +217,18 @@ public class StorageService {
     /**
      * 扫描文件夹中所有支持的文件
      */
-    private List<String> scanSupportedFiles(String folderPath) {
-        Path folder = Paths.get(folderPath);
-
+    private List<String> scanSupportedFiles(Path folder) {
         try (Stream<Path> pathStream = Files.walk(folder)) {
             return pathStream
                     .filter(Files::isRegularFile)
                     .filter(this::isSupportedFormat)
                     .peek(filePath -> log.debug("Found supported file: {}", filePath))
-                    .map(Path::toString)
+                    .map(filePath -> filePath.toAbsolutePath().normalize().toString())
                     .sorted()
                     .collect(Collectors.toList());
 
         } catch (IOException e) {
-            log.error("Failed to scan folder: {}", folderPath, e);
+            log.error("Failed to scan folder: {}", folder, e);
             throw new ServiceException(ExceptionEnum.CM333.getResultCode(), ExceptionEnum.CM333.getResultMsg());
         }
     }
@@ -319,6 +367,9 @@ public class StorageService {
      */
     public VectorDocument initializeKnowledgeBase(List<String> documentPaths, String documentSetId, String collectionName) {
         try {
+            if (documentPaths == null || documentPaths.isEmpty()) {
+                throw new ServiceException(ExceptionEnum.CM329.getResultCode(), ExceptionEnum.CM329.getResultMsg());
+            }
             // 确定目标集合
             String targetCollection = determineCollectionName(
                 documentPaths.isEmpty() ? null : documentPaths.get(0),
@@ -355,34 +406,36 @@ public class StorageService {
      */
     private List<Document> loadDocuments(List<String> documentPaths, String documentSetId, String collectionName) {
         List<Document> documents = new ArrayList<>();
+        Path documentRoot = getDocumentRoot();
 
         int loadedCount = 0;
         int skippedCount = 0;
 
         for (String path : documentPaths) {
             try {
+                Path filePath = resolveDocumentPath(path, documentRoot);
                 // 检查文件是否存在
-                if (!Files.exists(Paths.get(path))) {
+                if (!Files.exists(filePath)) {
                     log.warn("✗ File not found: {}", path);
                     skippedCount++;
                     continue;
                 }
+                filePath = resolveRealDocumentPath(filePath, documentRoot);
 
                 // 检查文件格式是否支持
-                if (!isSupportedFormat(path)) {
+                if (!isSupportedFormat(filePath)) {
                     log.warn("✗ Unsupported document format: {} ({})", path, getFileFormatDescription(path));
                     skippedCount++;
                     continue;
                 }
 
-                Path filePath = Paths.get(path);
                 Document document;
 
-                if (path.toLowerCase(Locale.ROOT).endsWith(".pdf")) {
+                if (filePath.toString().toLowerCase(Locale.ROOT).endsWith(".pdf")) {
                     // PDF 文件使用 PDF 解析器
                     ApachePdfBoxDocumentParser pdfParser = new ApachePdfBoxDocumentParser();
                     document = FileSystemDocumentLoader.loadDocument(filePath, pdfParser);
-                } else if (isTextFormat(path)) {
+                } else if (isTextFormat(filePath.toString())) {
                     // 所有文本文件使用 TextDocumentParser
                     document = FileSystemDocumentLoader.loadDocument(filePath, new TextDocumentParser());
                 } else {
@@ -395,15 +448,15 @@ public class StorageService {
                 if (documentSetId != null) {
                     document.metadata().put("documentSetId", documentSetId);
                 }
-                document.metadata().put("source", path);
-                document.metadata().put("format", getFileFormatDescription(path));
+                document.metadata().put("source", filePath.toString());
+                document.metadata().put("format", getFileFormatDescription(filePath.toString()));
                 document.metadata().put("timestamp", String.valueOf(System.currentTimeMillis()));
                 document.metadata().put("collection", collectionName); // 添加集合信息
 
                 documents.add(document);
                 loadedCount++;
                 log.info("✓ Loaded document: {} ({}) to collection: {}",
-                    path, getFileFormatDescription(path), collectionName);
+                    filePath, getFileFormatDescription(filePath.toString()), collectionName);
 
             } catch (Exception e) {
                 log.error("✗ Failed to load the document: {} - {}", path, e.getMessage());
@@ -582,17 +635,18 @@ public class StorageService {
      */
     public DeleteResult deleteByFilePath(String filePath, String collectionName) {
         try {
+            String safeFilePath = resolveDocumentPath(filePath).toString();
             log.info("Deleting documents by file path: {} from collection: {}",
-                filePath, collectionName != null ? collectionName : "all collections");
+                safeFilePath, collectionName != null ? collectionName : "all collections");
             long startTime = System.currentTimeMillis();
 
             // 搜索包含该文件路径的所有向量
-            List<EmbeddingMatch<TextSegment>> matches = searchBySource(filePath, collectionName);
+            List<EmbeddingMatch<TextSegment>> matches = searchBySource(safeFilePath, collectionName);
 
             if (matches.isEmpty()) {
                 log.warn("No documents found for file path: {} in collection: {}",
-                    filePath, collectionName != null ? collectionName : "any collection");
-                return new DeleteResult(0, 0, filePath);
+                    safeFilePath, collectionName != null ? collectionName : "any collection");
+                return new DeleteResult(0, 0, safeFilePath);
             }
 
             // 提取要删除的向量ID
@@ -610,11 +664,13 @@ public class StorageService {
 
             long endTime = System.currentTimeMillis();
             log.info("Deleted {} vectors for file: {} from collection: {}, time taken: {} ms",
-                deletedCount, filePath, collectionName != null ? collectionName : "all collections",
+                deletedCount, safeFilePath, collectionName != null ? collectionName : "all collections",
                 (endTime - startTime));
 
-            return new DeleteResult(deletedCount, 0, filePath);
+            return new DeleteResult(deletedCount, 0, safeFilePath);
 
+        } catch (ServiceException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Failed to delete documents by file path: {} from collection: {}",
                 filePath, collectionName, e);

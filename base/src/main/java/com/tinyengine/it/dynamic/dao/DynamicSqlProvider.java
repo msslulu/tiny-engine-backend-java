@@ -1,107 +1,215 @@
 package com.tinyengine.it.dynamic.dao;
 
+import com.tinyengine.it.common.utils.SqlIdentifierValidator;
 import org.apache.ibatis.jdbc.SQL;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 public class DynamicSqlProvider {
 
-	public String select(Map<String, Object> params) {
-		String tableName = (String) params.get("tableName");
-		List<String> fields = (List<String>) params.get("fields");
-		Map<String, Object> conditions = (Map<String, Object>) params.get("conditions");
-		Integer pageNum = (Integer) params.get("pageNum");
-		Integer pageSize = (Integer) params.get("pageSize");
-		String orderBy = (String) params.get("orderBy");
-		String orderType = (String) params.get("orderType");
+    private static final String COUNT_SELECT = "COUNT(*) AS count";
+    private static final String COUNT_SELECT_LEGACY = "COUNT(*) as count";
 
-		SQL sql = new SQL();
+    public String select(Map<String, Object> params) {
+        String tableName = requireIdentifier(params.get("tableName"), "tableName");
+        List<?> fields = getList(params.get("fields"));
+        Map<?, ?> conditions = getMap(params.get("conditions"));
+        Integer pageNum = (Integer) params.get("pageNum");
+        Integer pageSize = (Integer) params.get("pageSize");
+        String orderBy = getOptionalIdentifier(params.get("orderBy"), "orderBy");
+        String orderType = getOrderType(params.get("orderType"));
 
-		// 选择字段
-		if (fields != null && !fields.isEmpty()) {
-			for (String field : fields) {
-				sql.SELECT(field);
-			}
-		} else {
-			sql.SELECT("*");
-		}
+        SQL sql = new SQL();
 
-		sql.FROM(tableName);
+        if (fields != null && !fields.isEmpty()) {
+            for (Object field : fields) {
+                sql.SELECT(getSelectField(field));
+            }
+        } else {
+            sql.SELECT("*");
+        }
 
-		// 条件
-		if (conditions != null && !conditions.isEmpty()) {
-			for (Map.Entry<String, Object> entry : conditions.entrySet()) {
-				if (entry.getValue() != null) {
-					sql.WHERE(entry.getKey() + " = #{conditions." + entry.getKey() + "}");
-				}
-			}
-		}
-		// 排序
-		if (orderBy != null && !orderBy.isEmpty()) {
-			sql.ORDER_BY(orderBy + " " + orderType);
-		}
+        sql.FROM(tableName);
 
-		// 分页
-		if (pageNum != null && pageSize != null) {
-			return sql.toString() + " LIMIT " + (pageNum - 1) * pageSize + ", " + pageSize;
-		}
+        if (conditions != null && !conditions.isEmpty()) {
+            List<Object> conditionValues = new ArrayList<>();
+            int index = 0;
+            for (Map.Entry<?, ?> entry : conditions.entrySet()) {
+                if (entry.getValue() != null) {
+                    String columnName = requireIdentifier(entry.getKey(), "condition key");
+                    conditionValues.add(entry.getValue());
+                    sql.WHERE(columnName + " = #{conditionValues[" + index + "]}");
+                    index++;
+                }
+            }
+            params.put("conditionValues", conditionValues);
+        }
 
-		return sql.toString();
-	}
+        if (orderBy != null && !orderBy.isEmpty()) {
+            sql.ORDER_BY(orderBy + " " + orderType);
+        }
 
-	public String insert(Map<String, Object> params) {
-		String tableName = (String) params.get("tableName");
-		Map<String, Object> data = (Map<String, Object>) params.get("data");
+        if (pageNum != null && pageSize != null) {
+            int safePageNum = requirePositiveInt(pageNum, "pageNum");
+            int safePageSize = requirePositiveInt(pageSize, "pageSize");
+            params.put("offset", (safePageNum - 1) * safePageSize);
+            params.put("limit", safePageSize);
+            return sql + " LIMIT #{offset}, #{limit}";
+        }
 
-		SQL sql = new SQL();
-		sql.INSERT_INTO(tableName);
+        return sql.toString();
+    }
 
-		if (data != null && !data.isEmpty()) {
-			for (Map.Entry<String, Object> entry : data.entrySet()) {
-				sql.VALUES(entry.getKey(), "#{data." + entry.getKey() + "}");
-			}
-		}
+    public String insert(Map<String, Object> params) {
+        String tableName = requireIdentifier(params.get("tableName"), "tableName");
+        Map<?, ?> data = getRequiredMap(params.get("data"), "data");
+        List<Object> dataValues = new ArrayList<>();
 
-		return sql.toString();
-	}
+        SQL sql = new SQL();
+        sql.INSERT_INTO(tableName);
 
-	public String update(Map<String, Object> params) {
-		String tableName = (String) params.get("tableName");
-		Map<String, Object> data = (Map<String, Object>) params.get("data");
-		Map<String, Object> conditions = (Map<String, Object>) params.get("conditions");
+        int index = 0;
+        for (Map.Entry<?, ?> entry : data.entrySet()) {
+            String columnName = requireIdentifier(entry.getKey(), "data key");
+            dataValues.add(entry.getValue());
+            sql.VALUES(columnName, "#{dataValues[" + index + "]}");
+            index++;
+        }
+        params.put("dataValues", dataValues);
 
-		SQL sql = new SQL();
-		sql.UPDATE(tableName);
+        return sql.toString();
+    }
 
-		if (data != null && !data.isEmpty()) {
-			for (Map.Entry<String, Object> entry : data.entrySet()) {
-				sql.SET(entry.getKey() + " = #{data." + entry.getKey() + "}");
-			}
-		}
+    public String update(Map<String, Object> params) {
+        String tableName = requireIdentifier(params.get("tableName"), "tableName");
+        Map<?, ?> data = getRequiredMap(params.get("data"), "data");
+        Map<?, ?> conditions = getRequiredMap(params.get("conditions"), "conditions");
+        List<Object> dataValues = new ArrayList<>();
+        List<Object> conditionValues = new ArrayList<>();
 
-		if (conditions != null && !conditions.isEmpty()) {
-			for (Map.Entry<String, Object> entry : conditions.entrySet()) {
-				sql.WHERE(entry.getKey() + " = #{conditions." + entry.getKey() + "}");
-			}
-		}
+        SQL sql = new SQL();
+        sql.UPDATE(tableName);
 
-		return sql.toString();
-	}
+        int dataIndex = 0;
+        for (Map.Entry<?, ?> entry : data.entrySet()) {
+            String columnName = requireIdentifier(entry.getKey(), "data key");
+            dataValues.add(entry.getValue());
+            sql.SET(columnName + " = #{dataValues[" + dataIndex + "]}");
+            dataIndex++;
+        }
+        params.put("dataValues", dataValues);
 
-	public String delete(Map<String, Object> params) {
-		String tableName = (String) params.get("tableName");
-		Map<String, Object> conditions = (Map<String, Object>) params.get("conditions");
+        int conditionIndex = 0;
+        for (Map.Entry<?, ?> entry : conditions.entrySet()) {
+            if (entry.getValue() != null) {
+                String columnName = requireIdentifier(entry.getKey(), "condition key");
+                conditionValues.add(entry.getValue());
+                sql.WHERE(columnName + " = #{conditionValues[" + conditionIndex + "]}");
+                conditionIndex++;
+            }
+        }
+        if (conditionValues.isEmpty()) {
+            throw new IllegalArgumentException("conditions cannot be empty");
+        }
+        params.put("conditionValues", conditionValues);
 
-		SQL sql = new SQL();
-		sql.DELETE_FROM(tableName);
+        return sql.toString();
+    }
 
-		if (conditions != null && !conditions.isEmpty()) {
-			for (Map.Entry<String, Object> entry : conditions.entrySet()) {
-				sql.WHERE(entry.getKey() + " = #{conditions." + entry.getKey() + "}");
-			}
-		}
+    public String delete(Map<String, Object> params) {
+        String tableName = requireIdentifier(params.get("tableName"), "tableName");
+        Map<?, ?> conditions = getRequiredMap(params.get("conditions"), "conditions");
+        List<Object> conditionValues = new ArrayList<>();
 
-		return sql.toString();
-	}
+        SQL sql = new SQL();
+        sql.DELETE_FROM(tableName);
+
+        int index = 0;
+        for (Map.Entry<?, ?> entry : conditions.entrySet()) {
+            if (entry.getValue() != null) {
+                String columnName = requireIdentifier(entry.getKey(), "condition key");
+                conditionValues.add(entry.getValue());
+                sql.WHERE(columnName + " = #{conditionValues[" + index + "]}");
+                index++;
+            }
+        }
+        if (conditionValues.isEmpty()) {
+            throw new IllegalArgumentException("conditions cannot be empty");
+        }
+        params.put("conditionValues", conditionValues);
+
+        return sql.toString();
+    }
+
+    private String getSelectField(Object field) {
+        if (field instanceof String && COUNT_SELECT_LEGACY.equalsIgnoreCase(((String) field).trim())) {
+            return COUNT_SELECT;
+        }
+        return requireIdentifier(field, "field");
+    }
+
+    private String getOptionalIdentifier(Object value, String name) {
+        if (value == null) {
+            return null;
+        }
+        String identifier = requireString(value, name);
+        if (identifier.isEmpty()) {
+            return null;
+        }
+        return SqlIdentifierValidator.requireValidIdentifier(identifier);
+    }
+
+    private String requireIdentifier(Object value, String name) {
+        return SqlIdentifierValidator.requireValidIdentifier(requireString(value, name));
+    }
+
+    private String requireString(Object value, String name) {
+        if (!(value instanceof String)) {
+            throw new IllegalArgumentException(name + " must be a string");
+        }
+        return (String) value;
+    }
+
+    private String getOrderType(Object value) {
+        if (value == null || (value instanceof String && ((String) value).isEmpty())) {
+            return "ASC";
+        }
+        return SqlIdentifierValidator.requireValidOrderType(requireString(value, "orderType"));
+    }
+
+    private int requirePositiveInt(Integer value, String name) {
+        if (value == null || value <= 0) {
+            throw new IllegalArgumentException(name + " must be positive");
+        }
+        return value;
+    }
+
+    private List<?> getList(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (!(value instanceof List<?>)) {
+            throw new IllegalArgumentException("fields must be a list");
+        }
+        return (List<?>) value;
+    }
+
+    private Map<?, ?> getMap(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (!(value instanceof Map<?, ?>)) {
+            throw new IllegalArgumentException("conditions must be a map");
+        }
+        return (Map<?, ?>) value;
+    }
+
+    private Map<?, ?> getRequiredMap(Object value, String name) {
+        if (!(value instanceof Map<?, ?>) || ((Map<?, ?>) value).isEmpty()) {
+            throw new IllegalArgumentException(name + " cannot be empty");
+        }
+        return (Map<?, ?>) value;
+    }
 }

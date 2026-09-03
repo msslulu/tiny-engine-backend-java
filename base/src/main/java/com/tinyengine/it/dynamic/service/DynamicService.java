@@ -222,13 +222,7 @@ public class DynamicService {
     }
 
     private void validateTableAndData(String tableName, Map<String, Object> data) {
-        if (tableName == null || tableName.trim().isEmpty()) {
-            throw new IllegalArgumentException("表名不能为空");
-        }
-
-        if (!tableName.matches("^[a-zA-Z_][a-zA-Z0-9_]*$")) {
-            throw new IllegalArgumentException("表名格式不正确");
-        }
+        SqlIdentifierValidator.validate(tableName);
 
         if (data == null || data.isEmpty()) {
             throw new IllegalArgumentException("数据不能为空");
@@ -256,6 +250,10 @@ public class DynamicService {
     }
 
     private String getTableName(String modelId) {
-        return "dynamic_" + modelId.toLowerCase(Locale.ROOT);
+        if (modelId == null || modelId.trim().isEmpty()) {
+            throw new IllegalArgumentException("模型名称不能为空");
+        }
+        String tableName = "dynamic_" + modelId.toLowerCase(Locale.ROOT);
+        return SqlIdentifierValidator.requireValidIdentifier(tableName);
     }
 }

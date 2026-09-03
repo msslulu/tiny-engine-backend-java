@@ -80,14 +80,7 @@ public class DynamicModelService {
 		}
 	}
     private String generateDropTableSQL(String tableName) {
-	    if (tableName == null || tableName.isEmpty()) {
-		    throw new IllegalArgumentException("Table name cannot be null or empty");
-	    }
-
-	    // Validate table name to prevent SQL injection
-	    if (!tableName.matches("^[a-zA-Z0-9_]+$")) {
-		    throw new IllegalArgumentException("Invalid table name: " + tableName);
-	    }
+	    SqlIdentifierValidator.validate(tableName);
 	    StringBuilder sql = new StringBuilder();
 	    sql.append("DROP TABLE IF EXISTS ").append(tableName).append(";");
 	    return sql.toString();
@@ -113,6 +106,7 @@ public class DynamicModelService {
 	 * 生成创建表的SQL
 	 */
 	private String generateCreateTableSQL(String tableName, Model model) {
+		SqlIdentifierValidator.validate(tableName);
 		StringBuilder sql = new StringBuilder();
 		sql.append("CREATE TABLE IF NOT EXISTS ").append(tableName).append(" (\n");
 
@@ -124,6 +118,7 @@ public class DynamicModelService {
 		// 用户定义字段
 		for (ParametersDto field : model.getParameters()) {
 			if(!Objects.equals(field.getProp(), "id")){
+				SqlIdentifierValidator.validate(field.getProp());
 				String columnDef = generateColumnDefinition(field,"init");
 				columns.add(columnDef);
 			}
@@ -155,6 +150,7 @@ public class DynamicModelService {
 
 		for (ParametersDto param : parameters) {
 			String columnName = param.getProp();
+			SqlIdentifierValidator.validate(columnName);
 			String fieldType = param.getType();
 			param.setDefaultValue("1");
 			String value = param.getDefaultValue();
@@ -206,7 +202,7 @@ public class DynamicModelService {
 			}
 		}
 		if (orderBy != null && !orderBy.isEmpty()) {
-			SqlIdentifierValidator.validate(orderBy.replaceAll("(?i)\\s+(ASC|DESC)$", ""));
+			validateOrderBy(orderBy);
 		}
 
 		// 1. 构建SQL
@@ -399,6 +395,7 @@ public class DynamicModelService {
 	@Transactional
 	public void modifyTableStructure(Model model) {
 		String tableName = getTableName(model.getNameEn());
+		SqlIdentifierValidator.validate(tableName);
 		List<ParametersDto> parameters = model.getParameters();
 		if(parameters == null || parameters.isEmpty()){
 			throw new IllegalArgumentException("Model parameters cannot be null or empty");
@@ -423,9 +420,11 @@ public class DynamicModelService {
 			String afterColumn = null;
 			if(i>0){
 				afterColumn = parameters.get(i - 1).getProp();
+				SqlIdentifierValidator.validate(afterColumn);
 			}
 			ParametersDto param = parameters.get(i);
 			String columnName = param.getProp();
+			SqlIdentifierValidator.validate(columnName);
 			String columnType = mapJavaTypeToSQL(param.getType());
 
 			if (!existingColumnMap.containsKey(columnName)) {
@@ -445,6 +444,7 @@ public class DynamicModelService {
 
 		// Drop columns that are not in the parameters
 		for (String existingColumn : existingColumnMap.keySet()) {
+			SqlIdentifierValidator.validate(existingColumn);
 			if (parameters.stream().noneMatch(param -> param.getProp().equals(existingColumn))) {
 				alterStatements.add(String.format("DROP COLUMN %s", existingColumn));
 			}
@@ -507,10 +507,11 @@ public class DynamicModelService {
 		} else if(type.equals("modify")){
 			sb.append("MODIFY COLUMN ");
 		}
-		sb.append(field.getProp()).append(" ");
+		String columnName = SqlIdentifierValidator.requireValidIdentifier(field.getProp());
+		sb.append(columnName).append(" ");
 
 		// 映射数据类型
-		switch (field.getType()) {
+		switch (field.getType() == null ? "" : field.getType()) {
 			case "String":
 				int maxLength = field.getMaxLength() != null ? field.getMaxLength() : 255;
 				sb.append("VARCHAR(").append(maxLength).append(")");
@@ -542,10 +543,10 @@ public class DynamicModelService {
 		}
 
 		if (field.getDefaultValue() != null) {
-			sb.append(" DEFAULT '").append(field.getDefaultValue()).append("'");
+			sb.append(" DEFAULT '").append(SqlIdentifierValidator.escapeSqlLiteral(field.getDefaultValue())).append("'");
 		}
 		if(field.getDescription()!=null && !field.getDescription().isEmpty()){
-			sb.append(" COMMENT '").append(field.getDescription()).append("'");
+			sb.append(" COMMENT '").append(SqlIdentifierValidator.escapeSqlLiteral(field.getDescription())).append("'");
 		}
 
 		return sb.toString();
@@ -564,7 +565,7 @@ public class DynamicModelService {
 		}
 		for (int i = 0; i < jsonList.size(); i++) {
 			String value = jsonList.getJSONObject(i).getString("value");
-			options.add(value);
+			options.add(SqlIdentifierValidator.escapeSqlLiteral(value));
 		}
 
 		return options.stream()
@@ -577,14 +578,7 @@ public class DynamicModelService {
 	 * 验证表和数据
 	 */
 	private void validateTableAndData(String tableName, Map<String, Object> data) {
-		if (tableName == null || tableName.trim().isEmpty()) {
-			throw new IllegalArgumentException("表名不能为空");
-		}
-
-		// 防止SQL注入，验证表名格式
-		if (!tableName.matches("^[a-zA-Z_][a-zA-Z0-9_]*$")) {
-			throw new IllegalArgumentException("表名格式不正确");
-		}
+		SqlIdentifierValidator.validate(tableName);
 
 		if (data == null || data.isEmpty()) {
 			throw new IllegalArgumentException("数据不能为空");
@@ -592,9 +586,7 @@ public class DynamicModelService {
 
 		// 验证字段名格式
 		for (String field : data.keySet()) {
-			if (!field.matches("^[a-zA-Z_][a-zA-Z0-9_]*$")) {
-				throw new IllegalArgumentException("字段名格式不正确: " + field);
-			}
+			SqlIdentifierValidator.validate(field);
 		}
 	}
 
@@ -659,7 +651,28 @@ public class DynamicModelService {
 	 * 获取表名
 	 */
 	private String getTableName(String modelId) {
-		return "dynamic_" + modelId.toLowerCase(Locale.ROOT);
+		if (modelId == null || modelId.trim().isEmpty()) {
+			throw new IllegalArgumentException("Model name cannot be null or empty");
+		}
+		String tableName = "dynamic_" + modelId.toLowerCase(Locale.ROOT);
+		return SqlIdentifierValidator.requireValidIdentifier(tableName);
+	}
+
+	private void validateOrderBy(String orderBy) {
+		String trimmed = orderBy.trim();
+		if (trimmed.isEmpty()) {
+			throw new IllegalArgumentException("Invalid order by: " + orderBy);
+		}
+		String upper = trimmed.toUpperCase(Locale.ROOT);
+		if (upper.endsWith(" ASC")) {
+			SqlIdentifierValidator.validate(trimmed.substring(0, trimmed.length() - 4).trim());
+			return;
+		}
+		if (upper.endsWith(" DESC")) {
+			SqlIdentifierValidator.validate(trimmed.substring(0, trimmed.length() - 5).trim());
+			return;
+		}
+		SqlIdentifierValidator.validate(trimmed);
 	}
 
 

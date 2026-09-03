@@ -43,7 +43,7 @@ import java.util.regex.Pattern;
 public class AiChatServiceImpl implements AiChatService {
     private static final Pattern PATTERN_TAG_START = Pattern.compile("```javascript|<template>");
     private static final Pattern PATTERN_TAG_END = Pattern.compile("```|</template>|</script>|</style>");
-    private static final Pattern PATTERN_MESSAGE = Pattern.compile(".*编码时遵从以下几条要求.*");
+    private static final String MESSAGE_REQUIREMENTS = "编码时遵从以下几条要求";
 
     /**
      * Get start and end int [ ].
@@ -138,7 +138,7 @@ public class AiChatServiceImpl implements AiChatService {
         if (token == null || token.isEmpty()) {
             return Result.failed("The token cannot be empty");
         }
-        if (!Pattern.matches("^[A-Za-z0-9_.-]+$", token)) {
+        if (!isSafeToken(token)) {
             return Result.failed("Invalid token format");
         }
 
@@ -277,7 +277,7 @@ public class AiChatServiceImpl implements AiChatService {
 
         List<AiMessages> aiMessages = new ArrayList<>();
 
-        if (!PATTERN_MESSAGE.matcher(content).matches()) {
+        if (content == null || !content.contains(MESSAGE_REQUIREMENTS)) {
             AiMessages aiMessagesResult = messages.get(0);
             aiMessagesResult.setContent(defaultWords.getContent() + "\n" + content);
         }
@@ -286,5 +286,18 @@ public class AiChatServiceImpl implements AiChatService {
         }
 
         return messages;
+    }
+
+    private boolean isSafeToken(String token) {
+        for (int i = 0; i < token.length(); i++) {
+            char c = token.charAt(i);
+            if (!((c >= 'A' && c <= 'Z')
+                || (c >= 'a' && c <= 'z')
+                || (c >= '0' && c <= '9')
+                || c == '_' || c == '.' || c == '-')) {
+                return false;
+            }
+        }
+        return true;
     }
 }

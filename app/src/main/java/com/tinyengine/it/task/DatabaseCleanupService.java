@@ -21,6 +21,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -61,7 +62,7 @@ public class DatabaseCleanupService {
         }
 
         String executionId = UUID.randomUUID().toString().substring(0, 8);
-        String startTime = LocalDateTime.now().format(FORMATTER);
+        String startTime = LocalDateTime.now(ZoneId.systemDefault()).format(FORMATTER);
 
         logger.info("======= Start executing the database clearing task [{}] =======", executionId);
         logger.info("⏰ Time: {}", startTime);
@@ -108,7 +109,7 @@ public class DatabaseCleanupService {
             }
         }
 
-        String endTime = LocalDateTime.now().format(FORMATTER);
+        String endTime = LocalDateTime.now(ZoneId.systemDefault()).format(FORMATTER);
         stats.setEndTime(endTime);
         stats.setTotalRowsCleaned(totalRowsCleaned);
 
