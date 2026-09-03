@@ -74,6 +74,7 @@ import java.util.stream.Stream;
  */
 @Service
 @Slf4j
+@SuppressWarnings("PMD.TooManyMethods")
 public class BlockServiceImpl extends ServiceImpl<BlockMapper, Block> implements BlockService {
     private static final int DEFAULT_PAGE_SIZE = 10;
 

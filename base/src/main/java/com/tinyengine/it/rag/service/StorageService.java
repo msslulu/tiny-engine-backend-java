@@ -55,6 +55,7 @@ import java.util.stream.Stream;
 /** 存储服务 - 支持动态集合管理 */
 @Slf4j
 @Service
+@SuppressWarnings("PMD.TooManyMethods")
 public class StorageService {
     private final EmbeddingModel embeddingModel;
     private final EmbeddingStore<TextSegment> embeddingStore;

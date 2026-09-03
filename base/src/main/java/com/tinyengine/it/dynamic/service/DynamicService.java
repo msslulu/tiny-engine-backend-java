@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.Set;
 
 @Service
+@SuppressWarnings("PMD.TooManyMethods")
 public class DynamicService {
     @Autowired private ModelDataDao dynamicDao;
     @Autowired private ModelService modelService;

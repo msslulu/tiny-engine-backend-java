@@ -278,6 +278,7 @@
                         <ruleset>category/java/bestpractices.xml</ruleset>
                         <ruleset>category/java/codestyle.xml</ruleset>
                         <ruleset>category/java/design.xml</ruleset>
+                        <!--suppress UnresolvedMavenProperty -->
                         <ruleset>${maven.multiModuleProjectDirectory}/pmd/errorprone-ruleset.xml</ruleset>
                         <ruleset>category/java/performance.xml</ruleset>
                         <ruleset>category/java/security.xml</ruleset>

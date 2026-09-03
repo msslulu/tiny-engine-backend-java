@@ -44,6 +44,7 @@ import java.util.stream.Collectors;
 
 @Service
 @Slf4j
+@SuppressWarnings("PMD.TooManyMethods")
 public class ModelServiceImpl extends ServiceImpl<ModelMapper, Model> implements ModelService {
 
     @Autowired private DynamicModelService dynamicModelService;
