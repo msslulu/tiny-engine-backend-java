@@ -287,6 +287,7 @@
                     <showPmdLog>false</showPmdLog>
                     <linkXRef>false</linkXRef> <!-- Disable cross-referencing -->
                     <minimumTokens>100</minimumTokens>
+                    <minimumPriority>4</minimumPriority>
                 </configuration>
                 <executions>
                     <execution>

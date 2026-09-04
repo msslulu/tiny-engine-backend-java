@@ -145,14 +145,14 @@ public class DatabaseCleanupService {
         final List<String> tables = cleanupProperties.getWhitelistTables();
         return tables != null && !tables.isEmpty() ? tables : DEFAULT_TABLES;
     }
-
+    @SuppressWarnings("PMD.LawOfDemeter")
     private static String createExecutionId() {
         final UUID uuid = UUID.randomUUID();
         final String fullUuid = uuid.toString();
         return truncateUuid(fullUuid);
     }
 
-    private static String truncateUuid(String uuid) {
+    private static String truncateUuid(final String uuid) {
         return uuid.substring(0, EXEC_ID_LENGTH);
     }
 
