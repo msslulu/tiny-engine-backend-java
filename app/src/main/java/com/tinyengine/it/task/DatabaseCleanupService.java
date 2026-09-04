@@ -39,7 +39,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 @NoArgsConstructor
 @Service
 public class DatabaseCleanupService {
-    private static final String SUPPRESS_DATAFLOW_ANOMALY = "PMD.DataflowAnomalyAnalysis";
+    private static final String SUPPRESS_DDA  = "PMD.DataflowAnomalyAnalysis";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DatabaseCleanupService.class);
     private static final DateTimeFormatter FORMATTER =
@@ -195,7 +195,7 @@ public class DatabaseCleanupService {
             stats.recordFailure(tableName, exception.getMessage());
         }
     }
-    @SuppressWarnings(SUPPRESS_DATAFLOW_ANOMALY)
+    @SuppressWarnings(SUPPRESS_DDA)
     private long clearTable(final String tableName) {
         long result;   // 存储最终返回值
         if (cleanupProperties.isUseTruncate()) {
@@ -232,7 +232,7 @@ public class DatabaseCleanupService {
      *
      * @return whether the table exists
      */
-    @SuppressWarnings(SUPPRESS_DATAFLOW_ANOMALY)
+    @SuppressWarnings(SUPPRESS_DDA)
     public boolean tableExists(final String tableName) {
         boolean exists;
         try {
@@ -254,7 +254,7 @@ public class DatabaseCleanupService {
      *
      * @return record count in the table
      */
-    @SuppressWarnings(SUPPRESS_DATAFLOW_ANOMALY)
+    @SuppressWarnings(SUPPRESS_DDA)
     public long getTableRecordCount(final String tableName) {
         long result;   // 存储返回值
         try {
