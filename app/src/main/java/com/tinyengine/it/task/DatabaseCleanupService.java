@@ -234,19 +234,17 @@ public class DatabaseCleanupService {
      */
     @SuppressWarnings(SUPPRESS_DDA)
     public boolean tableExists(final String tableName) {
-        boolean exists;
         try {
             final String sql =
                     "SELECT COUNT(*) FROM information_schema.tables "
                     + "WHERE table_schema = DATABASE() AND table_name = ?";
             final Integer count =
                     jdbcTemplate.queryForObject(sql, Integer.class, tableName.toUpperCase(Locale.ROOT));
-            exists = count != null && count > 0;
+            return count != null && count > 0;
         } catch (DataAccessException | IllegalArgumentException exception) {
             logWarn("The checklist has failed: {}", exception.getMessage());
-            exists = false;
+            return false;
         }
-        return exists;
     }
 
     /**
@@ -256,17 +254,15 @@ public class DatabaseCleanupService {
      */
     @SuppressWarnings(SUPPRESS_DDA)
     public long getTableRecordCount(final String tableName) {
-        long result;   // 存储返回值
         try {
             validateTableName(tableName);
             final String sql = "SELECT COUNT(*) FROM " + tableName;
             final Long count = jdbcTemplate.queryForObject(sql, Long.class);
-            result = (count != null) ? count : 0;
+            return count != null ? count : 0L;
         } catch (DataAccessException | IllegalArgumentException exception) {
             logError("获取表记录数失败: {}", exception.getMessage());
-            result = -1;   // 异常时返回 -1
+            return  -1L;   // 异常时返回 -1
         }
-        return result;   // 唯一的退出点
     }
 
     /** 验证表名安全性 */
