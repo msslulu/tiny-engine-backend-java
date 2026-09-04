@@ -237,10 +237,10 @@ public class DatabaseCleanupService {
         boolean exists = false;
         try {
             final String sql =
-                "SELECT COUNT(*) FROM information_schema.tables "
+                    "SELECT COUNT(*) FROM information_schema.tables "
                     + "WHERE table_schema = DATABASE() AND table_name = ?";
             final Integer count =
-                jdbcTemplate.queryForObject(
+                    jdbcTemplate.queryForObject(
                     sql, Integer.class, tableName.toUpperCase(Locale.ROOT));
             if (count != null && count > 0) {
                 exists = true;
