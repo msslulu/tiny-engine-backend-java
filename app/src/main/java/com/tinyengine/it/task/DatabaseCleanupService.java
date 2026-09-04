@@ -19,7 +19,9 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import static java.time.Duration.between;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -135,6 +137,9 @@ public class DatabaseCleanupService {
         logInfo("==========================================");
     }
 
+    public DatabaseCleanupService() {
+    }
+
     /**
      * 获取白名单表列表.
      *
@@ -188,7 +193,7 @@ public class DatabaseCleanupService {
             stats.recordFailure(tableName, exception.getMessage());
         }
     }
-
+    @SuppressWarnings("PMD.DataflowAnomalyAnalysis")
     private long clearTable(final String tableName) {
         long result;   // 存储最终返回值
         if (cleanupProperties.isUseTruncate()) {
@@ -225,8 +230,9 @@ public class DatabaseCleanupService {
      *
      * @return whether the table exists
      */
+    @SuppressWarnings("PMD.DataflowAnomalyAnalysis")
     public boolean tableExists(final String tableName) {
-        boolean exists = false;
+        boolean exists;
         try {
             final String sql =
                     "SELECT COUNT(*) FROM information_schema.tables "
@@ -236,6 +242,7 @@ public class DatabaseCleanupService {
             exists = count != null && count > 0;
         } catch (DataAccessException | IllegalArgumentException exception) {
             logWarn("The checklist has failed: {}", exception.getMessage());
+            exists = false;
         }
         return exists;
     }
@@ -245,6 +252,7 @@ public class DatabaseCleanupService {
      *
      * @return record count in the table
      */
+    @SuppressWarnings("PMD.DataflowAnomalyAnalysis")
     public long getTableRecordCount(final String tableName) {
         long result;   // 存储返回值
         try {
@@ -386,7 +394,8 @@ public class DatabaseCleanupService {
             if (startTime != null && endTime != null) {
                 final LocalDateTime start = LocalDateTime.parse(startTime, FORMATTER);
                 final LocalDateTime end = LocalDateTime.parse(endTime, FORMATTER);
-                result = java.time.Duration.between(start, end).getSeconds();
+                final Duration duration = between(start, end);   // 使用静态导入的方法
+                result = duration.getSeconds();                  // 单独调用，无链式
             }
             return result;  // 唯一的退出点
         }
