@@ -137,8 +137,6 @@ public class DatabaseCleanupService {
         logInfo("==========================================");
     }
 
-    public DatabaseCleanupService() {
-    }
 
     /**
      * 获取白名单表列表.
@@ -388,7 +386,7 @@ public class DatabaseCleanupService {
         public Map<String, TableResult> getTableResults() {
             return tableResults;
         }
-
+        @ SuppressWarnings({"PMD.DataflowAnomalyAnalysis", "PMD.LawOfDemeter"})
         public long getDurationSeconds() {
             long result = 0;  // 默认值对应 startTime 或 endTime 为空的情况
             if (startTime != null && endTime != null) {
