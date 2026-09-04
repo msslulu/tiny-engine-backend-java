@@ -147,7 +147,8 @@ public class DatabaseCleanupService {
     }
 
     private static String createExecutionId() {
-        final String fullUuid = UUID.randomUUID().toString();
+        final UUID uuid = UUID.randomUUID();
+        final String fullUuid = uuid.toString();
         return truncateUuid(fullUuid);
     }
 
@@ -190,12 +191,13 @@ public class DatabaseCleanupService {
 
     private long clearTable(final String tableName) {
         long result;   // 存储最终返回值
-        if (!cleanupProperties.isUseTruncate()) {
-            result = clearTableData(tableName);
-        } else {
+        if (cleanupProperties.isUseTruncate()) {
             final long recordCount = getTableRecordCount(tableName);
             truncateTable(tableName);
             result = recordCount;
+        } else {
+            result = clearTableData(tableName);
+
         }
         return result;   // 唯一的返回语句
     }
