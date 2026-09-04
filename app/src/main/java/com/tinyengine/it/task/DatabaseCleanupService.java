@@ -12,6 +12,7 @@ package com.tinyengine.it.task;
 
 import jakarta.annotation.PostConstruct;
 
+import lombok.NoArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,9 +34,12 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+
 @SuppressWarnings("PMD.TooManyMethods")
+@NoArgsConstructor
 @Service
 public class DatabaseCleanupService {
+    private static final String SUPPRESS_DATAFLOW_ANOMALY = "PMD.DataflowAnomalyAnalysis";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DatabaseCleanupService.class);
     private static final DateTimeFormatter FORMATTER =
@@ -191,7 +195,7 @@ public class DatabaseCleanupService {
             stats.recordFailure(tableName, exception.getMessage());
         }
     }
-    @SuppressWarnings("PMD.DataflowAnomalyAnalysis")
+    @SuppressWarnings(SUPPRESS_DATAFLOW_ANOMALY)
     private long clearTable(final String tableName) {
         long result;   // 存储最终返回值
         if (cleanupProperties.isUseTruncate()) {
@@ -228,7 +232,7 @@ public class DatabaseCleanupService {
      *
      * @return whether the table exists
      */
-    @SuppressWarnings("PMD.DataflowAnomalyAnalysis")
+    @SuppressWarnings(SUPPRESS_DATAFLOW_ANOMALY)
     public boolean tableExists(final String tableName) {
         boolean exists;
         try {
@@ -250,7 +254,7 @@ public class DatabaseCleanupService {
      *
      * @return record count in the table
      */
-    @SuppressWarnings("PMD.DataflowAnomalyAnalysis")
+    @SuppressWarnings(SUPPRESS_DATAFLOW_ANOMALY)
     public long getTableRecordCount(final String tableName) {
         long result;   // 存储返回值
         try {
